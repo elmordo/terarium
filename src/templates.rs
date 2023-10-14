@@ -46,7 +46,7 @@ impl<LocaleKey> Template<LocaleKey> where LocaleKey: Eq + Hash + Copy {
                 // move all indexes after removed by one
                 self.handle_to_index.iter_mut().for_each(|(_, idx)| if *idx > content_idx { *idx -= 1; });
                 // clear locale lookup
-                self.locale_to_handle.retain(|key, val| *val == handle);
+                self.locale_to_handle.retain(|_, val| *val == handle);
                 // remove the content to get return value
                 let content = self.contents.remove(content_idx);
                 Some(content)

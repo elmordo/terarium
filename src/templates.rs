@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::hash::Hash;
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct Template<LocaleKey> {
     /// List of available contents for the template in different languages and dialects
     contents: Vec<String>,
@@ -103,11 +103,23 @@ impl<LocaleKey> Template<LocaleKey> where LocaleKey: Eq + Hash + Copy {
             .into_iter()
             .map(|(handle, idx)| {
                 let content = self.contents[idx].clone();
-                let locales = locales_by_handle.remove(&handle).unwrap_or(vec![]);
+                let mut locales = locales_by_handle.remove(&handle).unwrap_or(vec![]);
                 (content, locales)
             })
             .filter(|(_, locales)| locales.len() > 0)
             .collect()
+    }
+}
+
+
+impl<LocaleKey> Default for Template<LocaleKey> {
+    fn default() -> Self {
+        Self {
+            contents: Vec::new(),
+            locale_to_handle: HashMap::new(),
+            handle_to_index: HashMap::new(),
+            next_handle: 0,
+        }
     }
 }
 

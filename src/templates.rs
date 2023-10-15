@@ -46,7 +46,7 @@ impl<LocaleKey> Template<LocaleKey> where LocaleKey: Eq + Hash + Copy {
                 // move all indexes after removed by one
                 self.handle_to_index.iter_mut().for_each(|(_, idx)| if *idx > content_idx { *idx -= 1; });
                 // clear locale lookup
-                self.locale_to_handle.retain(|_, val| *val == handle);
+                self.locale_to_handle.retain(|_, val| *val != handle);
                 // remove the content to get return value
                 let content = self.contents.remove(content_idx);
                 Some(content)
@@ -109,5 +109,156 @@ impl<LocaleKey> Template<LocaleKey> where LocaleKey: Eq + Hash + Copy {
                     None => None
                 }
             }).map(|idx| self.contents[*idx].clone())
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    mod template {
+        use crate::Template;
+
+        #[test]
+        fn add_content() {
+            let mut template = empty_template();
+            let handle = template.add_content("foo bar".to_string(), vec![1, 2, 3]);
+            assert_eq!(template.contents.len(), 1);
+            assert_eq!(template.locale_to_handle[&1], handle);
+            assert_eq!(template.locale_to_handle[&2], handle);
+            assert_eq!(template.locale_to_handle[&3], handle);
+            let idx = template.handle_to_index[&handle];
+            assert_eq!(template.contents[idx], "foo bar");
+        }
+
+        #[test]
+        fn add_more_contents() {
+            let mut template = empty_template();
+            let handle_1 = template.add_content("foo bar".to_string(), vec![1, 2]);
+            let handle_2 = template.add_content("bar foo".to_string(), vec![2, 3]);
+
+
+            assert_eq!(template.locale_to_handle[&1], handle_1);
+            assert_eq!(template.locale_to_handle[&2], handle_2);
+            assert_eq!(template.locale_to_handle[&3], handle_2);
+
+            let idx_1 = template.handle_to_index[&handle_1];
+            assert_eq!(template.contents[idx_1], "foo bar");
+            let idx_2 = template.handle_to_index[&handle_2];
+            assert_eq!(template.contents[idx_2], "bar foo");
+        }
+
+        #[test]
+        fn remove_content() {
+            let mut template = empty_template();
+            let handle_1 = template.add_content("foo bar".to_string(), vec![1, 2]);
+            let handle_2 = template.add_content("bar foo".to_string(), vec![2, 3]);
+            let result = template.remove_content(handle_1);
+            assert!(result.is_some());
+            assert_eq!(result.unwrap(), "foo bar");
+
+            assert_eq!(template.handle_to_index[&handle_2], 0);
+            assert_eq!(template.contents[0], "bar foo");
+            assert_eq!(template.handle_to_index.get(&handle_1), None);
+
+            assert_eq!(template.locale_to_handle.get(&1), None);
+            assert_eq!(template.locale_to_handle[&2], handle_2);
+            assert_eq!(template.locale_to_handle[&3], handle_2);
+        }
+
+        #[test]
+        fn remove_not_existing_content() {
+            let mut template = empty_template();
+            let handle_1 = template.add_content("foo bar".to_string(), vec![1, 2]);
+            let result = template.remove_content(handle_1 + 200);
+            assert!(result.is_none());
+        }
+
+        #[test]
+        fn replace_content() {
+            let mut template = empty_template();
+            let handle_1 = template.add_content("foo bar".to_string(), vec![1, 2]);
+            let old_content = template.replace_content(handle_1, "bar bar".to_owned());
+
+            assert!(old_content.is_some());
+            assert_eq!(old_content.unwrap(), "foo bar");
+            assert_eq!(template.contents[0], "bar bar");
+        }
+
+        #[test]
+        fn replace_not_existing_content() {
+            let mut template = empty_template();
+            let handle_1 = template.add_content("foo bar".to_string(), vec![1, 2]);
+            let old_content = template.replace_content(handle_1 + 100, "bar bar".to_owned());
+            assert!(old_content.is_none());
+        }
+
+        #[test]
+        fn reassign_locales() {
+            let mut template = empty_template();
+            let handle_1 = template.add_content("foo bar".to_string(), vec![1, 2]);
+            let handle_2 = template.add_content("foo bar".to_string(), vec![3, 4]);
+            let old_locales = template.reassign_locales(handle_1, vec![2, 5]);
+
+            assert!(old_locales.is_some());
+            let Some(mut locales) = old_locales else { panic!() };
+            locales.sort();
+            assert_eq!(locales, vec![1, 2]);
+
+            assert_eq!(template.locale_to_handle.get(&1), None);
+            assert_eq!(template.locale_to_handle[&2], handle_1);
+            assert_eq!(template.locale_to_handle[&5], handle_1);
+            assert_eq!(template.locale_to_handle[&3], handle_2);
+            assert_eq!(template.locale_to_handle[&4], handle_2);
+        }
+
+        #[test]
+        fn reassign_not_existing_locales() {
+            let mut template = empty_template();
+            let handle_1 = template.add_content("foo bar".to_string(), vec![1, 2]);
+            let handle_2 = template.add_content("foo bar".to_string(), vec![3, 4]);
+            let old_locales = template.reassign_locales(handle_1 + 100, vec![2, 5]);
+
+            assert!(old_locales.is_none());
+        }
+
+        #[test]
+        fn get_content_with_no_fallback() {
+            let mut template = empty_template();
+            template.add_content("foo bar".to_owned(), vec![1, 2]);
+            let content = template.get_content(1, None);
+            assert!(content.is_some());
+            assert_eq!(content.unwrap(), "foo bar");
+        }
+
+        #[test]
+        fn get_not_existing_content_with_no_fallback() {
+            let mut template = empty_template();
+            template.add_content("foo bar".to_owned(), vec![1, 2]);
+            let content = template.get_content(5, None);
+            assert!(content.is_none());
+        }
+
+        #[test]
+        fn get_not_existing_content_with_fallback() {
+            let mut template = empty_template();
+            template.add_content("foo bar".to_owned(), vec![1, 2]);
+            template.add_content("bar bar".to_owned(), vec![3, 4]);
+            let content = template.get_content(5, Some(3));
+            assert!(content.is_some());
+            assert_eq!(content.unwrap(), "bar bar");
+        }
+
+        #[test]
+        fn get_not_existing_content_with_not_existing_fallback() {
+            let mut template = empty_template();
+            template.add_content("foo bar".to_owned(), vec![1, 2]);
+            template.add_content("bar bar".to_owned(), vec![3, 4]);
+            let content = template.get_content(5, Some(7));
+            assert!(content.is_none());
+        }
+
+        fn empty_template() -> Template<usize> {
+            Template::default()
+        }
     }
 }

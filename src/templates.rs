@@ -96,20 +96,6 @@ impl<LocaleKey> Template<LocaleKey> where LocaleKey: Eq + Hash + Copy {
             None => None
         }
     }
-
-    /// Get content for locale or for fallback.
-    /// Return the content if `locale` or `fallback_locale` is found.
-    /// Return [`None`] if there is no suitable content.
-    pub fn get_content(&self, locale: LocaleKey, fallback_locale: Option<LocaleKey>) -> Option<String> {
-        self.locale_to_handle
-            .get(&locale)
-            .or_else(|| {
-                match fallback_locale {
-                    Some(key) => self.locale_to_handle.get(&key),
-                    None => None
-                }
-            }).map(|idx| self.contents[*idx].clone())
-    }
 }
 
 
@@ -219,42 +205,6 @@ mod tests {
             let old_locales = template.reassign_locales(handle_1 + 100, vec![2, 5]);
 
             assert!(old_locales.is_none());
-        }
-
-        #[test]
-        fn get_content_with_no_fallback() {
-            let mut template = empty_template();
-            template.add_content("foo bar".to_owned(), vec![1, 2]);
-            let content = template.get_content(1, None);
-            assert!(content.is_some());
-            assert_eq!(content.unwrap(), "foo bar");
-        }
-
-        #[test]
-        fn get_not_existing_content_with_no_fallback() {
-            let mut template = empty_template();
-            template.add_content("foo bar".to_owned(), vec![1, 2]);
-            let content = template.get_content(5, None);
-            assert!(content.is_none());
-        }
-
-        #[test]
-        fn get_not_existing_content_with_fallback() {
-            let mut template = empty_template();
-            template.add_content("foo bar".to_owned(), vec![1, 2]);
-            template.add_content("bar bar".to_owned(), vec![3, 4]);
-            let content = template.get_content(5, Some(3));
-            assert!(content.is_some());
-            assert_eq!(content.unwrap(), "bar bar");
-        }
-
-        #[test]
-        fn get_not_existing_content_with_not_existing_fallback() {
-            let mut template = empty_template();
-            template.add_content("foo bar".to_owned(), vec![1, 2]);
-            template.add_content("bar bar".to_owned(), vec![3, 4]);
-            let content = template.get_content(5, Some(7));
-            assert!(content.is_none());
         }
 
         fn empty_template() -> Template<usize> {

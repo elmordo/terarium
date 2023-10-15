@@ -1,11 +1,6 @@
 use std::collections::HashMap;
 use std::hash::Hash;
 
-pub struct TemplateRegistry<TemplateKey, LocaleKey> {
-    templates: HashMap<TemplateKey, Template<LocaleKey>>,
-}
-
-
 #[derive(Clone, Default)]
 pub struct Template<LocaleKey> {
     /// List of available contents for the template in different languages and dialects

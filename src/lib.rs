@@ -1,4 +1,4 @@
-pub use templates::{Template, TemplateRegistry};
+pub use templates::Template;
 pub use terrarist::Terrarist;
 
 mod templates;

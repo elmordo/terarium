@@ -39,6 +39,19 @@ impl<TemplateKey, LocaleKey, GroupKey, GroupMemberKey> TerraristBuilder<Template
     pub fn remove_template(&mut self, key: &TemplateKey) -> Option<Template<LocaleKey>> {
         self.templates.remove(key)
     }
+
+    pub fn add_group(&mut self, key: GroupKey) -> &mut HashMap<GroupMemberKey, TemplateKey> {
+        self.groups.insert(key, HashMap::new());
+        self.groups.get_mut(key).unwrap()
+    }
+
+    pub fn get_group(&mut self, key: &GroupKey) -> Option<&mut HashMap<GroupMemberKey, TemplateKey>> {
+        self.groups.get_mut(key)
+    }
+
+    pub fn remove_group(&mut self, key: &GroupKey) -> Option<HashMap<GroupMemberKey, TemplateKey>> {
+        self.groups.remove(key)
+    }
 }
 
 

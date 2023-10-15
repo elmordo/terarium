@@ -96,12 +96,32 @@ impl<LocaleKey> Template<LocaleKey> where LocaleKey: Eq + Hash + Copy {
             None => None
         }
     }
+
+    /// Collect template content settings as Vec
+    /// When content has no locale, this content is dropped
+    pub fn collect_contents(self) -> Vec<(String, Vec<LocaleKey>)> {
+        let mut locales_by_handle = HashMap::<usize, Vec<LocaleKey>>::new();
+        self.locale_to_handle.into_iter().for_each(|(key, handle)| {
+            locales_by_handle.entry(handle).or_default().push(key);
+        });
+        self.handle_to_index
+            .into_iter()
+            .map(|(handle, idx)| {
+                let content = self.contents[idx].clone();
+                let locales = locales_by_handle.remove(&handle).unwrap_or(vec![]);
+                (content, locales)
+            })
+            .filter(|(_, locales)| locales.len() > 0)
+            .collect()
+    }
 }
 
 
 #[cfg(test)]
 mod tests {
     mod template {
+        use std::collections::HashMap;
+
         use crate::Template;
 
         #[test]
@@ -205,6 +225,22 @@ mod tests {
             let old_locales = template.reassign_locales(handle_1 + 100, vec![2, 5]);
 
             assert!(old_locales.is_none());
+        }
+
+        #[test]
+        fn collect_contents() {
+            let mut template = empty_template();
+            template.add_content("foo bar".to_string(), vec![1, 2]);
+            template.add_content("bar bar".to_string(), vec![3]);
+            template.add_content("foo foo".to_string(), vec![]);
+
+            let contents = template.collect_contents();
+            assert_eq!(contents.len(), 2);
+            let mut locales_by_content = contents.into_iter().collect::<HashMap<String, Vec<usize>>>();
+            locales_by_content.values_mut().for_each(|locales| locales.sort());
+
+            assert_eq!(locales_by_content["foo bar"], vec![1, 2]);
+            assert_eq!(locales_by_content["bar bar"], vec![3]);
         }
 
         fn empty_template() -> Template<usize> {

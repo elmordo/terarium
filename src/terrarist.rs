@@ -42,7 +42,7 @@ impl<TemplateKey, LocaleKey, GroupKey, GroupMemberKey> TerraristBuilder<Template
 
     pub fn add_group(&mut self, key: GroupKey) -> &mut HashMap<GroupMemberKey, TemplateKey> {
         self.groups.insert(key, HashMap::new());
-        self.groups.get_mut(key).unwrap()
+        self.groups.get_mut(&key).unwrap()
     }
 
     pub fn get_group(&mut self, key: &GroupKey) -> Option<&mut HashMap<GroupMemberKey, TemplateKey>> {
@@ -51,6 +51,22 @@ impl<TemplateKey, LocaleKey, GroupKey, GroupMemberKey> TerraristBuilder<Template
 
     pub fn remove_group(&mut self, key: &GroupKey) -> Option<HashMap<GroupMemberKey, TemplateKey>> {
         self.groups.remove(key)
+    }
+
+    pub fn check_group_config_validity(&self) -> Vec<(GroupKey, GroupMemberKey, TemplateKey)> {
+        self.groups
+            .iter()
+            .map(|(group_key, members)| {
+                // Check the group `group_key` and iterate over members
+                // missing templates are returned as iterable. This iterable is used as the
+                // `map` output
+                members
+                    .iter()
+                    .filter(|(_, template)| !self.templates.contains_key(*template))
+                    .map(|(member, template)| (group_key.clone(), member.clone(), template.clone()))
+            })
+            .flatten()  // Concat iterable of iterables into final output form
+            .collect()
     }
 }
 
@@ -105,6 +121,38 @@ mod tests {
             instance.add_template(1);
             let tpl = instance.remove_template(&2);
             assert!(tpl.is_none());
+        }
+
+        #[test]
+        fn group_manipulation() {
+            let mut instance = make_instance();
+            {
+                let grp = instance.add_group(1);
+                grp.insert(1, 1);
+            }
+            let grp = instance.get_group(&1);
+            assert!(grp.is_some());
+            let grp = grp.unwrap();
+            assert_eq!(grp.clone(), HashMap::<usize, usize>::from([(1, 1)]));
+
+            instance.remove_group(&1);
+            assert!(instance.get_group(&1).is_none())
+        }
+
+        #[test]
+        fn check_group_configuration() {
+            let mut instance = make_instance();
+            instance.add_template(1);
+            instance.add_template(2);
+
+            {
+                let grp = instance.add_group(100);
+                grp.insert(10, 1);
+                grp.insert(20, 2);
+                grp.insert(30, 3);
+            }
+
+            assert_eq!(instance.check_group_config_validity(), vec![(100, 30, 3)]);
         }
 
         fn make_instance() -> TerraristBuilder<usize, usize, usize, usize> {

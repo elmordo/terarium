@@ -1,9 +1,16 @@
 use std::collections::HashMap;
 use std::hash::Hash;
 
+use tera::Error as TeraError;
+use tera::Tera;
+use thiserror::Error;
+
 use crate::Template;
 
-pub struct Terrarist {}
+#[derive(Default)]
+pub struct Terrarist {
+    tera: Tera,
+}
 
 
 #[derive(Default)]
@@ -67,6 +74,36 @@ impl<TemplateKey, LocaleKey, GroupKey, GroupMemberKey> TerraristBuilder<Template
             })
             .flatten()  // Concat iterable of iterables into final output form
             .collect()
+    }
+
+    pub fn build(self) -> Result<Terrarist, TerraristBuilderError> {
+        let mut instance = Terrarist::default();
+        let mut tera_template_id: u32 = 1;
+
+        self.templates.into_iter().try_for_each(|(template_key, template)| {
+            template.collect_contents().into_iter().try_for_each(|(content, locales)| {
+                let template_name = format!("template#{}", tera_template_id);
+                tera_template_id += 1;
+                instance.tera.add_raw_template(&template_name, &content)?;
+                Ok::<_, TerraristBuilderError>(())
+            })?;
+            Ok::<_, TerraristBuilderError>(())
+        })?;
+        Ok(instance)
+    }
+}
+
+
+#[derive(Debug, Error)]
+pub enum TerraristBuilderError {
+    #[error("Unable to build template")]
+    TemplateBuildingError(TeraError),
+}
+
+
+impl From<TeraError> for TerraristBuilderError {
+    fn from(value: TeraError) -> Self {
+        Self::TemplateBuildingError(value)
     }
 }
 

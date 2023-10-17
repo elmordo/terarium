@@ -9,10 +9,10 @@ use crate::Template;
 
 pub struct Terrarist<TemplateKey, LocaleKey, GroupKey, GroupMemberKey>
     where
-        TemplateKey: Eq + Hash + Copy,
-        LocaleKey: Eq + Hash + Copy,
-        GroupKey: Eq + Hash + Copy,
-        GroupMemberKey: Eq + Hash + Copy,
+        TemplateKey: Eq + Hash + Clone,
+        LocaleKey: Eq + Hash + Clone,
+        GroupKey: Eq + Hash + Clone,
+        GroupMemberKey: Eq + Hash + Clone,
 {
     tera: Tera,
     template_map: HashMap<TemplateKey, HashMap<LocaleKey, String>>,
@@ -21,10 +21,10 @@ pub struct Terrarist<TemplateKey, LocaleKey, GroupKey, GroupMemberKey>
 
 impl<TemplateKey, LocaleKey, GroupKey, GroupMemberKey> Terrarist<TemplateKey, LocaleKey, GroupKey, GroupMemberKey>
     where
-        TemplateKey: Eq + Hash + Copy,
-        LocaleKey: Eq + Hash + Copy,
-        GroupKey: Eq + Hash + Copy,
-        GroupMemberKey: Eq + Hash + Copy,
+        TemplateKey: Eq + Hash + Clone,
+        LocaleKey: Eq + Hash + Clone,
+        GroupKey: Eq + Hash + Clone,
+        GroupMemberKey: Eq + Hash + Clone,
 {
     pub fn render_template(
         &self,
@@ -66,10 +66,10 @@ impl<TemplateKey, LocaleKey, GroupKey, GroupMemberKey> Terrarist<TemplateKey, Lo
 
 impl<TemplateKey, LocaleKey, GroupKey, GroupMemberKey> Default for Terrarist<TemplateKey, LocaleKey, GroupKey, GroupMemberKey>
     where
-        TemplateKey: Eq + Hash + Copy,
-        LocaleKey: Eq + Hash + Copy,
-        GroupKey: Eq + Hash + Copy,
-        GroupMemberKey: Eq + Hash + Copy,
+        TemplateKey: Eq + Hash + Clone,
+        LocaleKey: Eq + Hash + Clone,
+        GroupKey: Eq + Hash + Clone,
+        GroupMemberKey: Eq + Hash + Clone,
 {
     fn default() -> Self {
         Self {
@@ -104,10 +104,10 @@ impl From<TeraError> for TerraristError {
 #[derive(Default)]
 pub struct TerraristBuilder<TemplateKey, LocaleKey, GroupKey, GroupMemberKey>
     where
-        TemplateKey: Eq + Hash + Copy,
-        LocaleKey: Eq + Hash + Copy,
-        GroupKey: Eq + Hash + Copy,
-        GroupMemberKey: Eq + Hash + Copy,
+        TemplateKey: Eq + Hash + Clone,
+        LocaleKey: Eq + Hash + Clone,
+        GroupKey: Eq + Hash + Clone,
+        GroupMemberKey: Eq + Hash + Clone,
 {
     templates: HashMap<TemplateKey, Template<LocaleKey>>,
     groups: HashMap<GroupKey, HashMap<GroupMemberKey, TemplateKey>>,
@@ -116,14 +116,14 @@ pub struct TerraristBuilder<TemplateKey, LocaleKey, GroupKey, GroupMemberKey>
 
 impl<TemplateKey, LocaleKey, GroupKey, GroupMemberKey> TerraristBuilder<TemplateKey, LocaleKey, GroupKey, GroupMemberKey>
     where
-        TemplateKey: Eq + Hash + Copy,
-        LocaleKey: Eq + Hash + Copy,
-        GroupKey: Eq + Hash + Copy,
-        GroupMemberKey: Eq + Hash + Copy,
+        TemplateKey: Eq + Hash + Clone,
+        LocaleKey: Eq + Hash + Clone,
+        GroupKey: Eq + Hash + Clone,
+        GroupMemberKey: Eq + Hash + Clone,
 {
     pub fn add_template(&mut self, key: TemplateKey) -> &mut Template<LocaleKey> {
         let template = Template::default();
-        self.templates.insert(key, template);
+        self.templates.insert(key.clone(), template);
         self.templates.get_mut(&key).unwrap()
     }
 
@@ -136,7 +136,7 @@ impl<TemplateKey, LocaleKey, GroupKey, GroupMemberKey> TerraristBuilder<Template
     }
 
     pub fn add_group(&mut self, key: GroupKey) -> &mut HashMap<GroupMemberKey, TemplateKey> {
-        self.groups.insert(key, HashMap::new());
+        self.groups.insert(key.clone(), HashMap::new());
         self.groups.get_mut(&key).unwrap()
     }
 
@@ -181,7 +181,11 @@ impl<TemplateKey, LocaleKey, GroupKey, GroupMemberKey> TerraristBuilder<Template
                 instance.tera.add_raw_template(&template_name, &content)?;
 
                 locales.into_iter().for_each(|locale_key| {
-                    instance.template_map.entry(template_key).or_default().insert(locale_key, template_name.clone());
+                    instance
+                        .template_map
+                        .entry(template_key.clone())
+                        .or_default()
+                        .insert(locale_key.clone(), template_name.clone());
                 });
 
                 Ok::<_, TerraristBuilderError<_, _, _>>(())

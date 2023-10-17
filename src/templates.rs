@@ -17,7 +17,7 @@ pub struct Template<LocaleKey> {
 }
 
 
-impl<LocaleKey> Template<LocaleKey> where LocaleKey: Eq + Hash + Copy {
+impl<LocaleKey> Template<LocaleKey> where LocaleKey: Eq + Hash + Clone {
     /// Add new content into template.
     /// Return handle of the content.
     pub fn add_content(&mut self, content: String, locales: Vec<LocaleKey>) -> usize {
@@ -76,7 +76,7 @@ impl<LocaleKey> Template<LocaleKey> where LocaleKey: Eq + Hash + Copy {
                     .into_iter()
                     .filter(|item| {
                         if item.1 == handle {
-                            old_locales.push(item.0);
+                            old_locales.push(item.0.clone());
                             false
                         } else {
                             true

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::hash::Hash;
 
-use tera::Error as TeraError;
+use tera::{Context, Error as TeraError};
 use tera::Tera;
 use thiserror::Error;
 
@@ -19,6 +19,42 @@ pub struct Terrarist<TemplateKey, LocaleKey, GroupKey, GroupMemberKey>
     groups: HashMap<GroupKey, HashMap<GroupMemberKey, TemplateKey>>,
 }
 
+impl<TemplateKey, LocaleKey, GroupKey, GroupMemberKey> Terrarist<TemplateKey, LocaleKey, GroupKey, GroupMemberKey>
+    where
+        TemplateKey: Eq + Hash + Copy,
+        LocaleKey: Eq + Hash + Copy,
+        GroupKey: Eq + Hash + Copy,
+        GroupMemberKey: Eq + Hash + Copy,
+{
+    pub fn build_template(
+        &self,
+        context: &Context,
+        template_key: &TemplateKey,
+        locale: &LocaleKey,
+        fallback_locale: Option<&LocaleKey>,
+    ) -> Result<String, TerraristError> {
+        let template = self
+            .template_map.get(template_key).ok_or_else(|| TerraristError::TemplateNotFound)?;
+        let content_key = template
+            .get(locale)
+            .or_else(|| {
+                fallback_locale.map(|k| template.get(k)).flatten()
+            })
+            .ok_or_else(|| TerraristError::LocaleNotFound)?;
+        Ok(self.tera.render(content_key.as_str(), context)?)
+    }
+
+    pub fn build_group(
+        &self,
+        context: &Context,
+        group_key: &GroupKey,
+        locale: &LocaleKey,
+        fallback_locale: Option<&LocaleKey>,
+    ) -> Result<HashMap<GroupMemberKey, String>, TerraristError> {
+        todo!()
+    }
+}
+
 
 impl<TemplateKey, LocaleKey, GroupKey, GroupMemberKey> Default for Terrarist<TemplateKey, LocaleKey, GroupKey, GroupMemberKey>
     where
@@ -33,6 +69,26 @@ impl<TemplateKey, LocaleKey, GroupKey, GroupMemberKey> Default for Terrarist<Tem
             template_map: HashMap::new(),
             groups: HashMap::new(),
         }
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum TerraristError {
+    #[error("There is no template")]
+    TemplateNotFound,
+    #[error("Locale not found")]
+    LocaleNotFound,
+    #[error("There is no group")]
+    GroupNotFound,
+
+    #[error("Error when rendering template")]
+    RenderingFailed(TeraError),
+}
+
+
+impl From<TeraError> for TerraristError {
+    fn from(value: TeraError) -> Self {
+        Self::RenderingFailed(value)
     }
 }
 

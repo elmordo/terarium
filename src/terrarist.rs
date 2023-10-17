@@ -219,7 +219,6 @@ impl<GroupKey, GroupMemberKey, TemplateKey> From<TeraError> for TerraristBuilder
 mod tests {
     use super::*;
 
-    #[cfg(test)]
     mod terrarist_builder {
         use super::*;
 
@@ -301,6 +300,49 @@ mod tests {
 
         fn make_instance() -> TerraristBuilder<usize, usize, usize, usize> {
             TerraristBuilder::default()
+        }
+    }
+
+    mod terrarist {
+        use super::*;
+
+        #[test]
+        fn render_template() {
+            let instance = make_instance();
+            let ctx = make_context();
+            let result_a = instance.render_template(&ctx, &"template_a".to_owned(), &"cs".to_owned(), None).unwrap();
+            assert_eq!(result_a, "template_a cs john");
+        }
+
+        #[test]
+        fn render_group() {
+            let instance = make_instance();
+        }
+
+        fn make_instance() -> Terrarist<String, String, String, String> {
+            let mut builder = TerraristBuilder::default();
+            {
+                let template = builder.add_template("template_a".to_owned());
+                template.add_content("template_a cs {{name}}".to_owned(), vec!["cs".to_owned()]);
+                template.add_content("template_a en {{name}}".to_owned(), vec!["en".to_owned()]);
+            }
+            {
+                let template = builder.add_template("template_b".to_owned());
+                template.add_content("template_b en {{surname}}".to_owned(), vec!["en".to_owned()]);
+            }
+            {
+                let grp = builder.add_group("group_a".to_owned());
+                grp.insert("A".to_owned(), "template_a".to_owned());
+                grp.insert("B".to_owned(), "template_b".to_owned());
+            }
+            builder.build().unwrap()
+        }
+
+        fn make_context() -> Context {
+            let mut ctx = Context::default();
+            ctx.insert("name", "john");
+            ctx.insert("surname", "doe");
+            ctx
         }
     }
 }

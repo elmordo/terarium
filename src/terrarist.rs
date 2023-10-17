@@ -26,7 +26,7 @@ impl<TemplateKey, LocaleKey, GroupKey, GroupMemberKey> Terrarist<TemplateKey, Lo
         GroupKey: Eq + Hash + Copy,
         GroupMemberKey: Eq + Hash + Copy,
 {
-    pub fn build_template(
+    pub fn render_template(
         &self,
         context: &Context,
         template_key: &TemplateKey,
@@ -44,14 +44,22 @@ impl<TemplateKey, LocaleKey, GroupKey, GroupMemberKey> Terrarist<TemplateKey, Lo
         Ok(self.tera.render(content_key.as_str(), context)?)
     }
 
-    pub fn build_group(
+    pub fn render_group(
         &self,
         context: &Context,
         group_key: &GroupKey,
         locale: &LocaleKey,
         fallback_locale: Option<&LocaleKey>,
     ) -> Result<HashMap<GroupMemberKey, String>, TerraristError> {
-        todo!()
+        let group = self.groups.get(group_key).ok_or_else(|| TerraristError::GroupNotFound)?;
+        let mut result = HashMap::<GroupMemberKey, String>::new();
+
+        for (member_key, template_key) in group.iter() {
+            let content = self.render_template(context, template_key, locale, fallback_locale)?;
+            result.insert(member_key.clone(), content);
+        }
+
+        Ok(result)
     }
 }
 

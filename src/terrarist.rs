@@ -7,9 +7,33 @@ use thiserror::Error;
 
 use crate::Template;
 
-#[derive(Default)]
-pub struct Terrarist {
+pub struct Terrarist<TemplateKey, LocaleKey, GroupKey, GroupMemberKey>
+    where
+        TemplateKey: Eq + Hash + Copy,
+        LocaleKey: Eq + Hash + Copy,
+        GroupKey: Eq + Hash + Copy,
+        GroupMemberKey: Eq + Hash + Copy,
+{
     tera: Tera,
+    template_map: HashMap<TemplateKey, HashMap<LocaleKey, String>>,
+    groups: HashMap<GroupKey, HashMap<GroupMemberKey, TemplateKey>>,
+}
+
+
+impl<TemplateKey, LocaleKey, GroupKey, GroupMemberKey> Default for Terrarist<TemplateKey, LocaleKey, GroupKey, GroupMemberKey>
+    where
+        TemplateKey: Eq + Hash + Copy,
+        LocaleKey: Eq + Hash + Copy,
+        GroupKey: Eq + Hash + Copy,
+        GroupMemberKey: Eq + Hash + Copy,
+{
+    fn default() -> Self {
+        Self {
+            tera: Tera::default(),
+            template_map: HashMap::new(),
+            groups: HashMap::new(),
+        }
+    }
 }
 
 
@@ -76,32 +100,47 @@ impl<TemplateKey, LocaleKey, GroupKey, GroupMemberKey> TerraristBuilder<Template
             .collect()
     }
 
-    pub fn build(self) -> Result<Terrarist, TerraristBuilderError> {
+    pub fn build(self) -> Result<Terrarist<TemplateKey, LocaleKey, GroupKey, GroupMemberKey>, TerraristBuilderError<GroupKey, GroupMemberKey, TemplateKey>> {
+        let check_result = self.check_group_config_validity();
+        if !check_result.is_empty() {
+            return Err(TerraristBuilderError::GroupIntegrityProblem(check_result));
+        }
+
         let mut instance = Terrarist::default();
         let mut tera_template_id: u32 = 1;
 
+        // build templates
         self.templates.into_iter().try_for_each(|(template_key, template)| {
             template.collect_contents().into_iter().try_for_each(|(content, locales)| {
                 let template_name = format!("template#{}", tera_template_id);
                 tera_template_id += 1;
                 instance.tera.add_raw_template(&template_name, &content)?;
-                Ok::<_, TerraristBuilderError>(())
+
+                locales.into_iter().for_each(|locale_key| {
+                    instance.template_map.entry(template_key).or_default().insert(locale_key, template_name.clone());
+                });
+
+                Ok::<_, TerraristBuilderError<_, _, _>>(())
             })?;
-            Ok::<_, TerraristBuilderError>(())
+            Ok::<_, TerraristBuilderError<_, _, _>>(())
         })?;
+
+        instance.groups = self.groups;
         Ok(instance)
     }
 }
 
 
 #[derive(Debug, Error)]
-pub enum TerraristBuilderError {
+pub enum TerraristBuilderError<GroupKey, GroupMemberKey, TemplateKey> {
     #[error("Unable to build template")]
     TemplateBuildingError(TeraError),
+    #[error("Cannot build template groups - some templates are missing")]
+    GroupIntegrityProblem(Vec<(GroupKey, GroupMemberKey, TemplateKey)>),
 }
 
 
-impl From<TeraError> for TerraristBuilderError {
+impl<GroupKey, GroupMemberKey, TemplateKey> From<TeraError> for TerraristBuilderError<GroupKey, GroupMemberKey, TemplateKey> {
     fn from(value: TeraError) -> Self {
         Self::TemplateBuildingError(value)
     }

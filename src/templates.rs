@@ -18,6 +18,11 @@ pub struct Template<LocaleKey> {
 
 
 impl<LocaleKey> Template<LocaleKey> where LocaleKey: Eq + Hash + Clone {
+    /// Consume self and return the `ContentBuilder`
+    pub fn content_builder(self) -> ContentBuilder<LocaleKey> {
+        ContentBuilder::new(self)
+    }
+
     /// Add new content into template.
     /// Return handle of the content.
     pub fn add_content(&mut self, content: String, locales: Vec<LocaleKey>) -> usize {
@@ -120,6 +125,33 @@ impl<LocaleKey> Default for Template<LocaleKey> {
             handle_to_index: HashMap::new(),
             next_handle: 0,
         }
+    }
+}
+
+
+/// Helper builder of easier content building
+pub struct ContentBuilder<LocaleKey> where LocaleKey: Hash + Eq + Clone {
+    template: Template<LocaleKey>,
+}
+
+
+impl<LocaleKey> ContentBuilder<LocaleKey> where LocaleKey: Hash + Eq + Clone {
+    /// Create new instance from template
+    pub fn new(template: Template<LocaleKey>) -> Self {
+        Self {
+            template,
+        }
+    }
+
+    /// Add content and return self
+    pub fn add_content(mut self, content: String, locales: Vec<LocaleKey>) -> Self {
+        self.template.add_content(content, locales);
+        self
+    }
+
+    /// Consume self and return template
+    pub fn build(self) -> Template<LocaleKey> {
+        self.template
     }
 }
 

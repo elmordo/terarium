@@ -30,7 +30,9 @@ impl<KeyType> Terrarist<KeyType>
     ) -> Result<String, TerraristError>
         where
             KeyType: Borrow<K>,
+            KeyType: Borrow<LK>,
             K: Hash + Eq,
+            LK: Hash + Eq,
     {
         let template = self
             .template_map.get(template_key).ok_or_else(|| TerraristError::TemplateNotFound)?;
@@ -52,7 +54,9 @@ impl<KeyType> Terrarist<KeyType>
     ) -> Result<HashMap<KeyType, String>, TerraristError>
         where
             KeyType: Borrow<K>,
+            KeyType: Borrow<LK>,
             K: Hash + Eq,
+            LK: Hash + Eq,
     {
         let group = self.groups.get(group_key).ok_or_else(|| TerraristError::GroupNotFound)?;
         let mut result = HashMap::<KeyType, String>::new();

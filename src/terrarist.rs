@@ -8,37 +8,29 @@ use thiserror::Error;
 
 use crate::Template;
 
-pub struct Terrarist<TemplateKey, LocaleKey, GroupKey, GroupMemberKey>
+pub struct Terrarist<KeyType>
     where
-        TemplateKey: Eq + Hash + Clone,
-        LocaleKey: Eq + Hash + Clone,
-        GroupKey: Eq + Hash + Clone,
-        GroupMemberKey: Eq + Hash + Clone,
+        KeyType: Eq + Hash + Clone,
 {
     tera: Tera,
-    template_map: HashMap<TemplateKey, HashMap<LocaleKey, String>>,
-    groups: HashMap<GroupKey, HashMap<GroupMemberKey, TemplateKey>>,
+    template_map: HashMap<KeyType, HashMap<KeyType, String>>,
+    groups: HashMap<KeyType, HashMap<KeyType, KeyType>>,
 }
 
-impl<TemplateKey, LocaleKey, GroupKey, GroupMemberKey> Terrarist<TemplateKey, LocaleKey, GroupKey, GroupMemberKey>
+impl<KeyType> Terrarist<KeyType>
     where
-        TemplateKey: Eq + Hash + Clone,
-        LocaleKey: Eq + Hash + Clone,
-        GroupKey: Eq + Hash + Clone,
-        GroupMemberKey: Eq + Hash + Clone,
+        KeyType: Eq + Hash + Clone,
 {
-    pub fn render_template<TK: ?Sized, LK: ?Sized>(
+    pub fn render_template<K: ?Sized, LK: ?Sized>(
         &self,
         context: &Context,
-        template_key: &TK,
+        template_key: &K,
         locale: &LK,
         fallback_locale: Option<&LK>,
     ) -> Result<String, TerraristError>
         where
-            TemplateKey: Borrow<TK>,
-            TK: Hash + Eq,
-            LocaleKey: Borrow<LK>,
-            LK: Hash + Eq
+            KeyType: Borrow<K>,
+            K: Hash + Eq,
     {
         let template = self
             .template_map.get(template_key).ok_or_else(|| TerraristError::TemplateNotFound)?;
@@ -51,21 +43,19 @@ impl<TemplateKey, LocaleKey, GroupKey, GroupMemberKey> Terrarist<TemplateKey, Lo
         Ok(self.tera.render(content_key.as_str(), context)?)
     }
 
-    pub fn render_group<GK: ?Sized, LK: ?Sized>(
+    pub fn render_group<K: ?Sized, LK: ?Sized>(
         &self,
         context: &Context,
-        group_key: &GK,
+        group_key: &K,
         locale: &LK,
         fallback_locale: Option<&LK>,
-    ) -> Result<HashMap<GroupMemberKey, String>, TerraristError>
+    ) -> Result<HashMap<KeyType, String>, TerraristError>
         where
-            GroupKey: Borrow<GK>,
-            GK: Hash + Eq,
-            LocaleKey: Borrow<LK>,
-            LK: Hash + Eq
+            KeyType: Borrow<K>,
+            K: Hash + Eq,
     {
         let group = self.groups.get(group_key).ok_or_else(|| TerraristError::GroupNotFound)?;
-        let mut result = HashMap::<GroupMemberKey, String>::new();
+        let mut result = HashMap::<KeyType, String>::new();
 
         for (member_key, template_key) in group.iter() {
             let content = self.render_template(context, template_key, locale, fallback_locale)?;
@@ -77,12 +67,9 @@ impl<TemplateKey, LocaleKey, GroupKey, GroupMemberKey> Terrarist<TemplateKey, Lo
 }
 
 
-impl<TemplateKey, LocaleKey, GroupKey, GroupMemberKey> Default for Terrarist<TemplateKey, LocaleKey, GroupKey, GroupMemberKey>
+impl<KeyType> Default for Terrarist<KeyType>
     where
-        TemplateKey: Eq + Hash + Clone,
-        LocaleKey: Eq + Hash + Clone,
-        GroupKey: Eq + Hash + Clone,
-        GroupMemberKey: Eq + Hash + Clone,
+        KeyType: Eq + Hash + Clone,
 {
     fn default() -> Self {
         Self {
@@ -115,53 +102,47 @@ impl From<TeraError> for TerraristError {
 
 
 #[derive(Default)]
-pub struct TerraristBuilder<TemplateKey, LocaleKey, GroupKey, GroupMemberKey>
+pub struct TerraristBuilder<KeyType>
     where
-        TemplateKey: Eq + Hash + Clone,
-        LocaleKey: Eq + Hash + Clone,
-        GroupKey: Eq + Hash + Clone,
-        GroupMemberKey: Eq + Hash + Clone,
+        KeyType: Eq + Hash + Clone,
 {
-    templates: HashMap<TemplateKey, Template<LocaleKey>>,
-    groups: HashMap<GroupKey, HashMap<GroupMemberKey, TemplateKey>>,
+    templates: HashMap<KeyType, Template<KeyType>>,
+    groups: HashMap<KeyType, HashMap<KeyType, KeyType>>,
 }
 
 
-impl<TemplateKey, LocaleKey, GroupKey, GroupMemberKey> TerraristBuilder<TemplateKey, LocaleKey, GroupKey, GroupMemberKey>
+impl<KeyType> TerraristBuilder<KeyType>
     where
-        TemplateKey: Eq + Hash + Clone,
-        LocaleKey: Eq + Hash + Clone,
-        GroupKey: Eq + Hash + Clone,
-        GroupMemberKey: Eq + Hash + Clone,
+        KeyType: Eq + Hash + Clone,
 {
-    pub fn add_template(&mut self, key: TemplateKey) -> &mut Template<LocaleKey> {
+    pub fn add_template(&mut self, key: KeyType) -> &mut Template<KeyType> {
         let template = Template::default();
         self.templates.insert(key.clone(), template);
         self.templates.get_mut(&key).unwrap()
     }
 
-    pub fn get_template(&mut self, key: &TemplateKey) -> Option<&mut Template<LocaleKey>> {
+    pub fn get_template(&mut self, key: &KeyType) -> Option<&mut Template<KeyType>> {
         self.templates.get_mut(key)
     }
 
-    pub fn remove_template(&mut self, key: &TemplateKey) -> Option<Template<LocaleKey>> {
+    pub fn remove_template(&mut self, key: &KeyType) -> Option<Template<KeyType>> {
         self.templates.remove(key)
     }
 
-    pub fn add_group(&mut self, key: GroupKey) -> &mut HashMap<GroupMemberKey, TemplateKey> {
+    pub fn add_group(&mut self, key: KeyType) -> &mut HashMap<KeyType, KeyType> {
         self.groups.insert(key.clone(), HashMap::new());
         self.groups.get_mut(&key).unwrap()
     }
 
-    pub fn get_group(&mut self, key: &GroupKey) -> Option<&mut HashMap<GroupMemberKey, TemplateKey>> {
+    pub fn get_group(&mut self, key: &KeyType) -> Option<&mut HashMap<KeyType, KeyType>> {
         self.groups.get_mut(key)
     }
 
-    pub fn remove_group(&mut self, key: &GroupKey) -> Option<HashMap<GroupMemberKey, TemplateKey>> {
+    pub fn remove_group(&mut self, key: &KeyType) -> Option<HashMap<KeyType, KeyType>> {
         self.groups.remove(key)
     }
 
-    pub fn check_group_config_validity(&self) -> Vec<(GroupKey, GroupMemberKey, TemplateKey)> {
+    pub fn check_group_config_validity(&self) -> Vec<(KeyType, KeyType, KeyType)> {
         self.groups
             .iter()
             .map(|(group_key, members)| {
@@ -177,7 +158,7 @@ impl<TemplateKey, LocaleKey, GroupKey, GroupMemberKey> TerraristBuilder<Template
             .collect()
     }
 
-    pub fn build(self) -> Result<Terrarist<TemplateKey, LocaleKey, GroupKey, GroupMemberKey>, TerraristBuilderError<GroupKey, GroupMemberKey, TemplateKey>> {
+    pub fn build(self) -> Result<Terrarist<KeyType>, TerraristBuilderError<KeyType>> {
         let check_result = self.check_group_config_validity();
         if !check_result.is_empty() {
             return Err(TerraristBuilderError::GroupIntegrityProblem(check_result));
@@ -201,9 +182,9 @@ impl<TemplateKey, LocaleKey, GroupKey, GroupMemberKey> TerraristBuilder<Template
                         .insert(locale_key.clone(), template_name.clone());
                 });
 
-                Ok::<_, TerraristBuilderError<_, _, _>>(())
+                Ok::<_, TerraristBuilderError<_>>(())
             })?;
-            Ok::<_, TerraristBuilderError<_, _, _>>(())
+            Ok::<_, TerraristBuilderError<_>>(())
         })?;
 
         instance.groups = self.groups;
@@ -213,15 +194,15 @@ impl<TemplateKey, LocaleKey, GroupKey, GroupMemberKey> TerraristBuilder<Template
 
 
 #[derive(Debug, Error)]
-pub enum TerraristBuilderError<GroupKey, GroupMemberKey, TemplateKey> {
+pub enum TerraristBuilderError<KeyType> {
     #[error("Unable to build template")]
     TemplateBuildingError(TeraError),
     #[error("Cannot build template groups - some templates are missing")]
-    GroupIntegrityProblem(Vec<(GroupKey, GroupMemberKey, TemplateKey)>),
+    GroupIntegrityProblem(Vec<(KeyType, KeyType, KeyType)>),
 }
 
 
-impl<GroupKey, GroupMemberKey, TemplateKey> From<TeraError> for TerraristBuilderError<GroupKey, GroupMemberKey, TemplateKey> {
+impl<KeyType> From<TeraError> for TerraristBuilderError<KeyType> {
     fn from(value: TeraError) -> Self {
         Self::TemplateBuildingError(value)
     }
@@ -311,7 +292,7 @@ mod tests {
             assert_eq!(instance.check_group_config_validity(), vec![(100, 30, 3)]);
         }
 
-        fn make_instance() -> TerraristBuilder<usize, usize, usize, usize> {
+        fn make_instance() -> TerraristBuilder<usize> {
             TerraristBuilder::default()
         }
     }
@@ -332,7 +313,7 @@ mod tests {
             let instance = make_instance();
         }
 
-        fn make_instance() -> Terrarist<String, String, String, String> {
+        fn make_instance() -> Terrarist<String> {
             let mut builder = TerraristBuilder::default();
             {
                 let template = builder.add_template("template_a".to_owned());

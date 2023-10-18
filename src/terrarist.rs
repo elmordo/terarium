@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::hash::Hash;
 
@@ -26,13 +27,19 @@ impl<TemplateKey, LocaleKey, GroupKey, GroupMemberKey> Terrarist<TemplateKey, Lo
         GroupKey: Eq + Hash + Clone,
         GroupMemberKey: Eq + Hash + Clone,
 {
-    pub fn render_template(
+    pub fn render_template<TK: ?Sized, LK: ?Sized>(
         &self,
         context: &Context,
-        template_key: &TemplateKey,
-        locale: &LocaleKey,
-        fallback_locale: Option<&LocaleKey>,
-    ) -> Result<String, TerraristError> {
+        template_key: &TK,
+        locale: &LK,
+        fallback_locale: Option<&LK>,
+    ) -> Result<String, TerraristError>
+        where
+            TemplateKey: Borrow<TK>,
+            TK: Hash + Eq,
+            LocaleKey: Borrow<LK>,
+            LK: Hash + Eq
+    {
         let template = self
             .template_map.get(template_key).ok_or_else(|| TerraristError::TemplateNotFound)?;
         let content_key = template
@@ -44,13 +51,19 @@ impl<TemplateKey, LocaleKey, GroupKey, GroupMemberKey> Terrarist<TemplateKey, Lo
         Ok(self.tera.render(content_key.as_str(), context)?)
     }
 
-    pub fn render_group(
+    pub fn render_group<GK: ?Sized, LK: ?Sized>(
         &self,
         context: &Context,
-        group_key: &GroupKey,
-        locale: &LocaleKey,
-        fallback_locale: Option<&LocaleKey>,
-    ) -> Result<HashMap<GroupMemberKey, String>, TerraristError> {
+        group_key: &GK,
+        locale: &LK,
+        fallback_locale: Option<&LK>,
+    ) -> Result<HashMap<GroupMemberKey, String>, TerraristError>
+        where
+            GroupKey: Borrow<GK>,
+            GK: Hash + Eq,
+            LocaleKey: Borrow<LK>,
+            LK: Hash + Eq
+    {
         let group = self.groups.get(group_key).ok_or_else(|| TerraristError::GroupNotFound)?;
         let mut result = HashMap::<GroupMemberKey, String>::new();
 
@@ -310,7 +323,7 @@ mod tests {
         fn render_template() {
             let instance = make_instance();
             let ctx = make_context();
-            let result_a = instance.render_template(&ctx, &"template_a".to_owned(), &"cs".to_owned(), None).unwrap();
+            let result_a = instance.render_template(&ctx, "template_a", "cs", None).unwrap();
             assert_eq!(result_a, "template_a cs john");
         }
 

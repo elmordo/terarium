@@ -119,10 +119,8 @@ impl<KeyType> TerraristBuilder<KeyType>
     where
         KeyType: Eq + Hash + Clone,
 {
-    pub fn add_template(&mut self, key: KeyType) -> &mut Template<KeyType> {
-        let template = Template::default();
+    pub fn add_template(&mut self, key: KeyType, template: Template<KeyType>) {
         self.templates.insert(key.clone(), template);
-        self.templates.get_mut(&key).unwrap()
     }
 
     pub fn get_template(&mut self, key: &KeyType) -> Option<&mut Template<KeyType>> {
@@ -133,9 +131,8 @@ impl<KeyType> TerraristBuilder<KeyType>
         self.templates.remove(key)
     }
 
-    pub fn add_group(&mut self, key: KeyType) -> &mut HashMap<KeyType, KeyType> {
-        self.groups.insert(key.clone(), HashMap::new());
-        self.groups.get_mut(&key).unwrap()
+    pub fn add_group(&mut self, key: KeyType, group: HashMap<KeyType, KeyType>) {
+        self.groups.insert(key.clone(), group);
     }
 
     pub fn get_group(&mut self, key: &KeyType) -> Option<&mut HashMap<KeyType, KeyType>> {
@@ -197,6 +194,31 @@ impl<KeyType> TerraristBuilder<KeyType>
 }
 
 
+pub struct TemplateGroupBuilder<KeyType> where KeyType: Hash + Eq + Clone {
+    group: HashMap<KeyType, KeyType>,
+}
+
+impl<KeyType> TemplateGroupBuilder<KeyType> where KeyType: Hash + Eq + Clone {
+    pub fn add_member(mut self, name: KeyType, template_key: KeyType) -> Self {
+        self.group.insert(name, template_key);
+        self
+    }
+
+    pub fn build(self) -> HashMap<KeyType, KeyType> {
+        self.group
+    }
+}
+
+
+impl<KeyType> Default for TemplateGroupBuilder<KeyType> where KeyType: Hash + Eq + Clone {
+    fn default() -> Self {
+        Self {
+            group: HashMap::new(),
+        }
+    }
+}
+
+
 #[derive(Debug, Error)]
 pub enum TerraristBuilderError<KeyType> {
     #[error("Unable to build template")]
@@ -223,8 +245,13 @@ mod tests {
         #[test]
         fn add_template() {
             let mut instance = make_instance();
-            let template = instance.add_template(1);
-            template.add_content("foo".to_string(), vec![1, 2]);
+            instance.add_template(
+                1,
+                Template::default()
+                    .content_builder()
+                    .add_content("foo".to_string(), vec![1, 2])
+                    .build(),
+            );
 
             assert_eq!(instance.templates.len(), 1);
             let template = instance.templates[&1].clone();
@@ -237,21 +264,21 @@ mod tests {
         #[test]
         fn get_template() {
             let mut instance = make_instance();
-            instance.add_template(1);
+            instance.add_template(1, Template::default());
             assert!(instance.get_template(&1).is_some());
         }
 
         #[test]
         fn get_not_existing_template() {
             let mut instance = make_instance();
-            instance.add_template(1);
+            instance.add_template(1, Template::default());
             assert!(instance.get_template(&2).is_none());
         }
 
         #[test]
         fn remove_template() {
             let mut instance = make_instance();
-            instance.add_template(1);
+            instance.add_template(1, Template::default());
             let tpl = instance.remove_template(&1);
             assert!(tpl.is_some());
         }
@@ -259,7 +286,7 @@ mod tests {
         #[test]
         fn remove_not_existing_template() {
             let mut instance = make_instance();
-            instance.add_template(1);
+            instance.add_template(1, Template::default());
             let tpl = instance.remove_template(&2);
             assert!(tpl.is_none());
         }
@@ -267,10 +294,7 @@ mod tests {
         #[test]
         fn group_manipulation() {
             let mut instance = make_instance();
-            {
-                let grp = instance.add_group(1);
-                grp.insert(1, 1);
-            }
+            let grp = instance.add_group(1, TemplateGroupBuilder::default().add_member(1, 1).build());
             let grp = instance.get_group(&1);
             assert!(grp.is_some());
             let grp = grp.unwrap();
@@ -283,15 +307,16 @@ mod tests {
         #[test]
         fn check_group_configuration() {
             let mut instance = make_instance();
-            instance.add_template(1);
-            instance.add_template(2);
-
-            {
-                let grp = instance.add_group(100);
-                grp.insert(10, 1);
-                grp.insert(20, 2);
-                grp.insert(30, 3);
-            }
+            instance.add_template(1, Template::default());
+            instance.add_template(2, Template::default());
+            let grp = instance.add_group(
+                100,
+                TemplateGroupBuilder::default()
+                    .add_member(10, 1)
+                    .add_member(20, 2)
+                    .add_member(30, 3)
+                    .build(),
+            );
 
             assert_eq!(instance.check_group_config_validity(), vec![(100, 30, 3)]);
         }
@@ -319,20 +344,29 @@ mod tests {
 
         fn make_instance() -> Terrarist<String> {
             let mut builder = TerraristBuilder::default();
-            {
-                let template = builder.add_template("template_a".to_owned());
-                template.add_content("template_a cs {{name}}".to_owned(), vec!["cs".to_owned()]);
-                template.add_content("template_a en {{name}}".to_owned(), vec!["en".to_owned()]);
-            }
-            {
-                let template = builder.add_template("template_b".to_owned());
-                template.add_content("template_b en {{surname}}".to_owned(), vec!["en".to_owned()]);
-            }
-            {
-                let grp = builder.add_group("group_a".to_owned());
-                grp.insert("A".to_owned(), "template_a".to_owned());
-                grp.insert("B".to_owned(), "template_b".to_owned());
-            }
+            builder
+                .add_template(
+                    "template_a".to_owned(),
+                    Template::default()
+                        .content_builder()
+                        .add_content("template_a cs {{name}}".to_owned(), vec!["cs".to_owned()])
+                        .add_content("template_a en {{name}}".to_owned(), vec!["en".to_owned()])
+                        .build(),
+                );
+            builder.add_template(
+                "template_b".to_owned(),
+                Template::default()
+                    .content_builder()
+                    .add_content("template_b en {{surname}}".to_owned(), vec!["en".to_owned()])
+                    .build(),
+            );
+            let grp = builder.add_group(
+                "group_a".to_owned(),
+                TemplateGroupBuilder::default()
+                    .add_member("A".to_owned(), "template_a".to_owned())
+                    .add_member("B".to_owned(), "template_b".to_owned())
+                    .build(),
+            );
             builder.build().unwrap()
         }
 

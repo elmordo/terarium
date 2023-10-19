@@ -25,8 +25,8 @@ impl<KeyType> Terrarist<KeyType>
         &self,
         context: &Context,
         template_key: &K,
-        locale: &LK,
-        fallback_locale: Option<&LK>,
+        language: &LK,
+        fallback_language: Option<&LK>,
     ) -> Result<String, TerraristError>
         where
             KeyType: Borrow<K>,
@@ -37,11 +37,11 @@ impl<KeyType> Terrarist<KeyType>
         let template = self
             .template_map.get(template_key).ok_or_else(|| TerraristError::TemplateNotFound)?;
         let content_key = template
-            .get(locale)
+            .get(language)
             .or_else(|| {
-                fallback_locale.map(|k| template.get(k)).flatten()
+                fallback_language.map(|k| template.get(k)).flatten()
             })
-            .ok_or_else(|| TerraristError::LocaleNotFound)?;
+            .ok_or_else(|| TerraristError::LanguageNotFound)?;
         Ok(self.tera.render(content_key.as_str(), context)?)
     }
 
@@ -49,8 +49,8 @@ impl<KeyType> Terrarist<KeyType>
         &self,
         context: &Context,
         group_key: &K,
-        locale: &LK,
-        fallback_locale: Option<&LK>,
+        language: &LK,
+        fallback_language: Option<&LK>,
     ) -> Result<HashMap<KeyType, String>, TerraristError>
         where
             KeyType: Borrow<K>,
@@ -62,7 +62,7 @@ impl<KeyType> Terrarist<KeyType>
         let mut result = HashMap::<KeyType, String>::new();
 
         for (member_key, template_key) in group.iter() {
-            let content = self.render_template(context, template_key, locale, fallback_locale)?;
+            let content = self.render_template(context, template_key, language, fallback_language)?;
             result.insert(member_key.clone(), content);
         }
 
@@ -88,8 +88,8 @@ impl<KeyType> Default for Terrarist<KeyType>
 pub enum TerraristError {
     #[error("There is no template")]
     TemplateNotFound,
-    #[error("Locale not found")]
-    LocaleNotFound,
+    #[error("Language not found")]
+    LanguageNotFound,
     #[error("There is no group")]
     GroupNotFound,
 
@@ -170,17 +170,17 @@ impl<KeyType> TerraristBuilder<KeyType>
 
         // build templates
         self.templates.into_iter().try_for_each(|(template_key, template)| {
-            template.collect_contents().into_iter().try_for_each(|(content, locales)| {
+            template.collect_contents().into_iter().try_for_each(|(content, languages)| {
                 let template_name = format!("template#{}", tera_template_id);
                 tera_template_id += 1;
                 instance.tera.add_raw_template(&template_name, &content)?;
 
-                locales.into_iter().for_each(|locale_key| {
+                languages.into_iter().for_each(|language_key| {
                     instance
                         .template_map
                         .entry(template_key.clone())
                         .or_default()
-                        .insert(locale_key.clone(), template_name.clone());
+                        .insert(language_key.clone(), template_name.clone());
                 });
 
                 Ok::<_, TerraristBuilderError<_>>(())
@@ -346,13 +346,13 @@ mod tests {
         }
 
         #[test]
-        fn render_template_without_matching_locale() {
+        fn render_template_without_matching_language() {
             let instance = make_instance();
             let ctx = make_context();
             let result = instance.render_template(&ctx, "template_a", "de", Some("fr"));
 
             assert!(match result.unwrap_err() {
-                TerraristError::LocaleNotFound => true,
+                TerraristError::LanguageNotFound => true,
                 _ => false
             })
         }
@@ -360,6 +360,35 @@ mod tests {
         #[test]
         fn render_group() {
             let instance = make_instance();
+            let context = make_context();
+            let group_result = instance.render_group(&context, "group_a", "en", None);
+            assert!(group_result.is_ok());
+            let group_result = group_result.unwrap();
+            assert_eq!(group_result.get("A").unwrap(), "template_a en john");
+            assert_eq!(group_result.get("B").unwrap(), "template_b en doe");
+        }
+
+        #[test]
+        fn render_group_with_fallback() {
+            let instance = make_instance();
+            let context = make_context();
+            let group_result = instance.render_group(&context, "group_a", "cs", Some("en"));
+            assert!(group_result.is_ok());
+            let group_result = group_result.unwrap();
+            assert_eq!(group_result.get("A").unwrap(), "template_a cs john");
+            assert_eq!(group_result.get("B").unwrap(), "template_b en doe");
+        }
+
+        #[test]
+        fn render_group_when_invalid_language() {
+            let instance = make_instance();
+            let context = make_context();
+            let group_result = instance.render_group(&context, "group_a", "cs", Some("fr"));
+            assert!(group_result.is_err());
+            assert!(match group_result.unwrap_err() {
+                TerraristError::LanguageNotFound => true,
+                _ => false
+            })
         }
 
         fn make_instance() -> Terrarist<String> {

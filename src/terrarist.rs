@@ -360,6 +360,35 @@ mod tests {
         #[test]
         fn render_group() {
             let instance = make_instance();
+            let context = make_context();
+            let group_result = instance.render_group(&context, "group_a", "en", None);
+            assert!(group_result.is_ok());
+            let group_result = group_result.unwrap();
+            assert_eq!(group_result.get("A").unwrap(), "template_a en john");
+            assert_eq!(group_result.get("B").unwrap(), "template_b en doe");
+        }
+
+        #[test]
+        fn render_group_with_fallback() {
+            let instance = make_instance();
+            let context = make_context();
+            let group_result = instance.render_group(&context, "group_a", "cs", Some("en"));
+            assert!(group_result.is_ok());
+            let group_result = group_result.unwrap();
+            assert_eq!(group_result.get("A").unwrap(), "template_a cs john");
+            assert_eq!(group_result.get("B").unwrap(), "template_b en doe");
+        }
+
+        #[test]
+        fn render_group_when_invalid_locale() {
+            let instance = make_instance();
+            let context = make_context();
+            let group_result = instance.render_group(&context, "group_a", "cs", Some("fr"));
+            assert!(group_result.is_err());
+            assert!(match group_result.unwrap_err() {
+                TerraristError::LocaleNotFound => true,
+                _ => false
+            })
         }
 
         fn make_instance() -> Terrarist<String> {

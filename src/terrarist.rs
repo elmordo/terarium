@@ -338,6 +338,26 @@ mod tests {
         }
 
         #[test]
+        fn render_template_with_fallback() {
+            let instance = make_instance();
+            let ctx = make_context();
+            let result_a = instance.render_template(&ctx, "template_a", "de", Some("en")).unwrap();
+            assert_eq!(result_a, "template_a en john");
+        }
+
+        #[test]
+        fn render_template_without_matching_locale() {
+            let instance = make_instance();
+            let ctx = make_context();
+            let result = instance.render_template(&ctx, "template_a", "de", Some("fr"));
+
+            assert!(match result.unwrap_err() {
+                TerraristError::LocaleNotFound => true,
+                _ => false
+            })
+        }
+
+        #[test]
         fn render_group() {
             let instance = make_instance();
         }

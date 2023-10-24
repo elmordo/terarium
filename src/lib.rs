@@ -1,5 +1,8 @@
-pub use templates::Template;
-pub use terrarist::Terrarist;
+// re-export
+pub use tera;
+
+pub use templates::*;
+pub use terrarist::*;
 
 mod templates;
 mod terrarist;

@@ -294,7 +294,7 @@ mod tests {
         #[test]
         fn group_manipulation() {
             let mut instance = make_instance();
-            let grp = instance.add_group(1, TemplateGroupBuilder::default().add_member(1, 1).build());
+            let _grp = instance.add_group(1, TemplateGroupBuilder::default().add_member(1, 1).build());
             let grp = instance.get_group(&1);
             assert!(grp.is_some());
             let grp = grp.unwrap();
@@ -309,7 +309,7 @@ mod tests {
             let mut instance = make_instance();
             instance.add_template(1, Template::default());
             instance.add_template(2, Template::default());
-            let grp = instance.add_group(
+            let _grp = instance.add_group(
                 100,
                 TemplateGroupBuilder::default()
                     .add_member(10, 1)
@@ -409,7 +409,7 @@ mod tests {
                     .add_content("template_b en {{surname}}".to_owned(), vec!["en".to_owned()])
                     .build(),
             );
-            let grp = builder.add_group(
+            let _grp = builder.add_group(
                 "group_a".to_owned(),
                 TemplateGroupBuilder::default()
                     .add_member("A".to_owned(), "template_a".to_owned())

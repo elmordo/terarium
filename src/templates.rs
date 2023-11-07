@@ -108,7 +108,7 @@ impl<LanguageKey> Template<LanguageKey> where LanguageKey: Eq + Hash + Clone {
             .into_iter()
             .map(|(handle, idx)| {
                 let content = self.contents[idx].clone();
-                let mut languages = languages_by_handle.remove(&handle).unwrap_or(vec![]);
+                let languages = languages_by_handle.remove(&handle).unwrap_or(vec![]);
                 (content, languages)
             })
             .filter(|(_, languages)| languages.len() > 0)
@@ -260,7 +260,7 @@ mod tests {
         fn reassign_not_existing_languages() {
             let mut template = empty_template();
             let handle_1 = template.add_content("foo bar".to_string(), vec![1, 2]);
-            let handle_2 = template.add_content("foo bar".to_string(), vec![3, 4]);
+            let _handle_2 = template.add_content("foo bar".to_string(), vec![3, 4]);
             let old_languages = template.reassign_languages(handle_1 + 100, vec![2, 5]);
 
             assert!(old_languages.is_none());

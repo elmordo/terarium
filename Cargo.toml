@@ -1,5 +1,5 @@
 [package]
-name = "terrarium"
+name = "terarium"
 description = """
 Extension of the Tera template system with template grouping and bulk rendering of templates.
 """
@@ -7,7 +7,7 @@ authors = [
     "Petr Jindra <el.mordo@gmail.com>"
 ]
 version = "0.1.0"
-license = ["MIT"]
+license = "MIT"
 edition = "2021"
 keywords = ["template", "multi-template", "tera", "markup", "jinja2"]
 categories = ["template-engine"]

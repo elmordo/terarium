@@ -1,5 +1,5 @@
 [package]
-name = "terrarium"
+name = "terarium"
 description = """
 Extension of the Tera template system with template grouping and bulk rendering of templates.
 """

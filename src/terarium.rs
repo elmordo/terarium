@@ -119,8 +119,9 @@ impl<KeyType> TerariumBuilder<KeyType>
     where
         KeyType: Eq + Hash + Clone,
 {
-    pub fn add_template(&mut self, key: KeyType, template: Template<KeyType>) {
+    pub fn add_template(mut self, key: KeyType, template: Template<KeyType>) -> Self {
         self.templates.insert(key.clone(), template);
+        self
     }
 
     pub fn get_template(&mut self, key: &KeyType) -> Option<&mut Template<KeyType>> {
@@ -131,8 +132,9 @@ impl<KeyType> TerariumBuilder<KeyType>
         self.templates.remove(key)
     }
 
-    pub fn add_group(&mut self, key: KeyType, group: HashMap<KeyType, KeyType>) {
+    pub fn add_group(mut self, key: KeyType, group: HashMap<KeyType, KeyType>) -> Self {
         self.groups.insert(key.clone(), group);
+        self
     }
 
     pub fn get_group(&mut self, key: &KeyType) -> Option<&mut HashMap<KeyType, KeyType>> {
@@ -245,7 +247,7 @@ mod tests {
         #[test]
         fn add_template() {
             let mut instance = make_instance();
-            instance.add_template(
+            instance = instance.add_template(
                 1,
                 Template::default()
                     .content_builder()
@@ -264,21 +266,21 @@ mod tests {
         #[test]
         fn get_template() {
             let mut instance = make_instance();
-            instance.add_template(1, Template::default());
+            instance = instance.add_template(1, Template::default());
             assert!(instance.get_template(&1).is_some());
         }
 
         #[test]
         fn get_not_existing_template() {
             let mut instance = make_instance();
-            instance.add_template(1, Template::default());
+            instance = instance.add_template(1, Template::default());
             assert!(instance.get_template(&2).is_none());
         }
 
         #[test]
         fn remove_template() {
             let mut instance = make_instance();
-            instance.add_template(1, Template::default());
+            instance = instance.add_template(1, Template::default());
             let tpl = instance.remove_template(&1);
             assert!(tpl.is_some());
         }
@@ -286,7 +288,7 @@ mod tests {
         #[test]
         fn remove_not_existing_template() {
             let mut instance = make_instance();
-            instance.add_template(1, Template::default());
+            instance = instance.add_template(1, Template::default());
             let tpl = instance.remove_template(&2);
             assert!(tpl.is_none());
         }
@@ -294,7 +296,7 @@ mod tests {
         #[test]
         fn group_manipulation() {
             let mut instance = make_instance();
-            let _grp = instance.add_group(1, TemplateGroupBuilder::default().add_member(1, 1).build());
+            instance = instance.add_group(1, TemplateGroupBuilder::default().add_member(1, 1).build());
             let grp = instance.get_group(&1);
             assert!(grp.is_some());
             let grp = grp.unwrap();
@@ -307,9 +309,9 @@ mod tests {
         #[test]
         fn check_group_configuration() {
             let mut instance = make_instance();
-            instance.add_template(1, Template::default());
-            instance.add_template(2, Template::default());
-            let _grp = instance.add_group(
+            instance = instance.add_template(1, Template::default());
+            instance = instance.add_template(2, Template::default());
+            instance =  instance.add_group(
                 100,
                 TemplateGroupBuilder::default()
                     .add_member(10, 1)
@@ -393,7 +395,7 @@ mod tests {
 
         fn make_instance() -> Terarium<String> {
             let mut builder = TerariumBuilder::default();
-            builder
+            builder = builder
                 .add_template(
                     "template_a".to_owned(),
                     Template::default()
@@ -402,14 +404,14 @@ mod tests {
                         .add_content("template_a en {{name}}".to_owned(), vec!["en".to_owned()])
                         .build(),
                 );
-            builder.add_template(
+            builder = builder.add_template(
                 "template_b".to_owned(),
                 Template::default()
                     .content_builder()
                     .add_content("template_b en {{surname}}".to_owned(), vec!["en".to_owned()])
                     .build(),
             );
-            let _grp = builder.add_group(
+            builder = builder.add_group(
                 "group_a".to_owned(),
                 TemplateGroupBuilder::default()
                     .add_member("A".to_owned(), "template_a".to_owned())

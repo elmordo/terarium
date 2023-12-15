@@ -124,25 +124,9 @@ impl<KeyType> TerariumBuilder<KeyType>
         self
     }
 
-    pub fn get_template(&mut self, key: &KeyType) -> Option<&mut Template<KeyType>> {
-        self.templates.get_mut(key)
-    }
-
-    pub fn remove_template(&mut self, key: &KeyType) -> Option<Template<KeyType>> {
-        self.templates.remove(key)
-    }
-
     pub fn add_group(mut self, key: KeyType, group: HashMap<KeyType, KeyType>) -> Self {
         self.groups.insert(key.clone(), group);
         self
-    }
-
-    pub fn get_group(&mut self, key: &KeyType) -> Option<&mut HashMap<KeyType, KeyType>> {
-        self.groups.get_mut(key)
-    }
-
-    pub fn remove_group(&mut self, key: &KeyType) -> Option<HashMap<KeyType, KeyType>> {
-        self.groups.remove(key)
     }
 
     pub fn check_group_config_validity(&self) -> Vec<(KeyType, KeyType, KeyType)> {
@@ -237,6 +221,30 @@ impl<KeyType> From<TeraError> for TerariumBuilderError<KeyType> {
 }
 
 
+/// Additional methods for testing
+#[cfg(test)]
+impl<KeyType> TerariumBuilder<KeyType>
+    where
+        KeyType: Eq + Hash + Clone, {
+
+    pub fn get_template(&mut self, key: &KeyType) -> Option<&mut Template<KeyType>> {
+        self.templates.get_mut(key)
+    }
+
+    pub fn remove_template(&mut self, key: &KeyType) -> Option<Template<KeyType>> {
+        self.templates.remove(key)
+    }
+
+    pub fn get_group(&mut self, key: &KeyType) -> Option<&mut HashMap<KeyType, KeyType>> {
+        self.groups.get_mut(key)
+    }
+
+    pub fn remove_group(&mut self, key: &KeyType) -> Option<HashMap<KeyType, KeyType>> {
+        self.groups.remove(key)
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -261,36 +269,6 @@ mod tests {
             assert_eq!(contents.len(), 1);
             contents[0].1.sort();
             assert_eq!(contents, vec![("foo".to_string(), vec![1, 2])]);
-        }
-
-        #[test]
-        fn get_template() {
-            let mut instance = make_instance();
-            instance = instance.add_template(1, Template::default());
-            assert!(instance.get_template(&1).is_some());
-        }
-
-        #[test]
-        fn get_not_existing_template() {
-            let mut instance = make_instance();
-            instance = instance.add_template(1, Template::default());
-            assert!(instance.get_template(&2).is_none());
-        }
-
-        #[test]
-        fn remove_template() {
-            let mut instance = make_instance();
-            instance = instance.add_template(1, Template::default());
-            let tpl = instance.remove_template(&1);
-            assert!(tpl.is_some());
-        }
-
-        #[test]
-        fn remove_not_existing_template() {
-            let mut instance = make_instance();
-            instance = instance.add_template(1, Template::default());
-            let tpl = instance.remove_template(&2);
-            assert!(tpl.is_none());
         }
 
         #[test]

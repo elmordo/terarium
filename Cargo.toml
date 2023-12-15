@@ -1,7 +1,17 @@
 [package]
-name = "terrarist"
+name = "terrarium"
+description = """
+Extension of the Tera template system with template grouping and bulk rendering of templates.
+"""
+authors = [
+    "Petr Jindra <el.mordo@gmail.com>"
+]
 version = "0.1.0"
+license = ["MIT"]
 edition = "2021"
+keywords = ["template", "multi-template", "tera", "markup", "jinja2"]
+categories = ["template-engine"]
+rust-version = "1.71.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

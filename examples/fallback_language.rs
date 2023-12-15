@@ -1,6 +1,8 @@
 use tera::Context;
 use terarium::{Template, TerariumBuilder};
 
+
+/// When primary language is missing, the fallback language can be used.
 fn main() {
     let terarium = TerariumBuilder::default()
         .add_template(

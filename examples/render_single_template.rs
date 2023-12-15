@@ -1,6 +1,7 @@
 use tera::Context;
 use terarium::{Template, TerariumBuilder};
 
+/// The Terarium can render single template.
 fn main() {
     let terarium = TerariumBuilder::default()
         .add_template(

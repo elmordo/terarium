@@ -8,7 +8,7 @@ use thiserror::Error;
 
 use crate::Template;
 
-pub struct Terrarist<KeyType>
+pub struct Terarium<KeyType>
     where
         KeyType: Eq + Hash + Clone,
 {
@@ -17,7 +17,7 @@ pub struct Terrarist<KeyType>
     groups: HashMap<KeyType, HashMap<KeyType, KeyType>>,
 }
 
-impl<KeyType> Terrarist<KeyType>
+impl<KeyType> Terarium<KeyType>
     where
         KeyType: Eq + Hash + Clone,
 {
@@ -27,7 +27,7 @@ impl<KeyType> Terrarist<KeyType>
         template_key: &K,
         language: &LK,
         fallback_language: Option<&LK>,
-    ) -> Result<String, TerraristError>
+    ) -> Result<String, TerariumError>
         where
             KeyType: Borrow<K>,
             KeyType: Borrow<LK>,
@@ -35,13 +35,13 @@ impl<KeyType> Terrarist<KeyType>
             LK: Hash + Eq,
     {
         let template = self
-            .template_map.get(template_key).ok_or_else(|| TerraristError::TemplateNotFound)?;
+            .template_map.get(template_key).ok_or_else(|| TerariumError::TemplateNotFound)?;
         let content_key = template
             .get(language)
             .or_else(|| {
                 fallback_language.map(|k| template.get(k)).flatten()
             })
-            .ok_or_else(|| TerraristError::LanguageNotFound)?;
+            .ok_or_else(|| TerariumError::LanguageNotFound)?;
         Ok(self.tera.render(content_key.as_str(), context)?)
     }
 
@@ -51,14 +51,14 @@ impl<KeyType> Terrarist<KeyType>
         group_key: &K,
         language: &LK,
         fallback_language: Option<&LK>,
-    ) -> Result<HashMap<KeyType, String>, TerraristError>
+    ) -> Result<HashMap<KeyType, String>, TerariumError>
         where
             KeyType: Borrow<K>,
             KeyType: Borrow<LK>,
             K: Hash + Eq,
             LK: Hash + Eq,
     {
-        let group = self.groups.get(group_key).ok_or_else(|| TerraristError::GroupNotFound)?;
+        let group = self.groups.get(group_key).ok_or_else(|| TerariumError::GroupNotFound)?;
         let mut result = HashMap::<KeyType, String>::new();
 
         for (member_key, template_key) in group.iter() {
@@ -71,7 +71,7 @@ impl<KeyType> Terrarist<KeyType>
 }
 
 
-impl<KeyType> Default for Terrarist<KeyType>
+impl<KeyType> Default for Terarium<KeyType>
     where
         KeyType: Eq + Hash + Clone,
 {
@@ -85,7 +85,7 @@ impl<KeyType> Default for Terrarist<KeyType>
 }
 
 #[derive(Debug, Error)]
-pub enum TerraristError {
+pub enum TerariumError {
     #[error("There is no template")]
     TemplateNotFound,
     #[error("Language not found")]
@@ -98,7 +98,7 @@ pub enum TerraristError {
 }
 
 
-impl From<TeraError> for TerraristError {
+impl From<TeraError> for TerariumError {
     fn from(value: TeraError) -> Self {
         Self::RenderingFailed(value)
     }
@@ -106,7 +106,7 @@ impl From<TeraError> for TerraristError {
 
 
 #[derive(Default)]
-pub struct TerraristBuilder<KeyType>
+pub struct TerariumBuilder<KeyType>
     where
         KeyType: Eq + Hash + Clone,
 {
@@ -115,7 +115,7 @@ pub struct TerraristBuilder<KeyType>
 }
 
 
-impl<KeyType> TerraristBuilder<KeyType>
+impl<KeyType> TerariumBuilder<KeyType>
     where
         KeyType: Eq + Hash + Clone,
 {
@@ -159,13 +159,13 @@ impl<KeyType> TerraristBuilder<KeyType>
             .collect()
     }
 
-    pub fn build(self) -> Result<Terrarist<KeyType>, TerraristBuilderError<KeyType>> {
+    pub fn build(self) -> Result<Terarium<KeyType>, TerariumBuilderError<KeyType>> {
         let check_result = self.check_group_config_validity();
         if !check_result.is_empty() {
-            return Err(TerraristBuilderError::GroupIntegrityProblem(check_result));
+            return Err(TerariumBuilderError::GroupIntegrityProblem(check_result));
         }
 
-        let mut instance = Terrarist::default();
+        let mut instance = Terarium::default();
         let mut tera_template_id: u32 = 1;
 
         // build templates
@@ -183,9 +183,9 @@ impl<KeyType> TerraristBuilder<KeyType>
                         .insert(language_key.clone(), template_name.clone());
                 });
 
-                Ok::<_, TerraristBuilderError<_>>(())
+                Ok::<_, TerariumBuilderError<_>>(())
             })?;
-            Ok::<_, TerraristBuilderError<_>>(())
+            Ok::<_, TerariumBuilderError<_>>(())
         })?;
 
         instance.groups = self.groups;
@@ -220,7 +220,7 @@ impl<KeyType> Default for TemplateGroupBuilder<KeyType> where KeyType: Hash + Eq
 
 
 #[derive(Debug, Error)]
-pub enum TerraristBuilderError<KeyType> {
+pub enum TerariumBuilderError<KeyType> {
     #[error("Unable to build template")]
     TemplateBuildingError(TeraError),
     #[error("Cannot build template groups - some templates are missing")]
@@ -228,7 +228,7 @@ pub enum TerraristBuilderError<KeyType> {
 }
 
 
-impl<KeyType> From<TeraError> for TerraristBuilderError<KeyType> {
+impl<KeyType> From<TeraError> for TerariumBuilderError<KeyType> {
     fn from(value: TeraError) -> Self {
         Self::TemplateBuildingError(value)
     }
@@ -239,7 +239,7 @@ impl<KeyType> From<TeraError> for TerraristBuilderError<KeyType> {
 mod tests {
     use super::*;
 
-    mod terrarist_builder {
+    mod terarium_builder {
         use super::*;
 
         #[test]
@@ -321,12 +321,12 @@ mod tests {
             assert_eq!(instance.check_group_config_validity(), vec![(100, 30, 3)]);
         }
 
-        fn make_instance() -> TerraristBuilder<usize> {
-            TerraristBuilder::default()
+        fn make_instance() -> TerariumBuilder<usize> {
+            TerariumBuilder::default()
         }
     }
 
-    mod terrarist {
+    mod terarium {
         use super::*;
 
         #[test]
@@ -352,7 +352,7 @@ mod tests {
             let result = instance.render_template(&ctx, "template_a", "de", Some("fr"));
 
             assert!(match result.unwrap_err() {
-                TerraristError::LanguageNotFound => true,
+                TerariumError::LanguageNotFound => true,
                 _ => false
             })
         }
@@ -386,13 +386,13 @@ mod tests {
             let group_result = instance.render_group(&context, "group_a", "cs", Some("fr"));
             assert!(group_result.is_err());
             assert!(match group_result.unwrap_err() {
-                TerraristError::LanguageNotFound => true,
+                TerariumError::LanguageNotFound => true,
                 _ => false
             })
         }
 
-        fn make_instance() -> Terrarist<String> {
-            let mut builder = TerraristBuilder::default();
+        fn make_instance() -> Terarium<String> {
+            let mut builder = TerariumBuilder::default();
             builder
                 .add_template(
                     "template_a".to_owned(),

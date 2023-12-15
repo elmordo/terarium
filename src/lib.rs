@@ -2,7 +2,7 @@
 pub use tera;
 
 pub use templates::*;
-pub use terrarist::*;
+pub use terarium::*;
 
 mod templates;
-mod terrarist;
+mod terarium;

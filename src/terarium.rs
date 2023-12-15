@@ -8,12 +8,19 @@ use thiserror::Error;
 
 use crate::Template;
 
+
+/// Group templates and render single templates or template groups.
+/// Multi-language  support is provided by the Terarium.
+/// The generic parameter is type of template/group/language key
 pub struct Terarium<KeyType>
     where
         KeyType: Eq + Hash + Clone,
 {
+    /// Internal Tera template
     tera: Tera,
+    /// Template by template key lookup.
     template_map: HashMap<KeyType, HashMap<KeyType, String>>,
+    /// Group by group key lookup.
     groups: HashMap<KeyType, HashMap<KeyType, KeyType>>,
 }
 
@@ -21,6 +28,8 @@ impl<KeyType> Terarium<KeyType>
     where
         KeyType: Eq + Hash + Clone,
 {
+    /// Render single template identified by its key.
+    /// The `Tera` context is accepted for rendering.
     pub fn render_template<K: ?Sized, LK: ?Sized>(
         &self,
         context: &Context,
@@ -45,6 +54,8 @@ impl<KeyType> Terarium<KeyType>
         Ok(self.tera.render(content_key.as_str(), context)?)
     }
 
+    /// Render template group.
+    /// Result is HashMap where keys are member names and values are rendered templates.
     pub fn render_group<K: ?Sized, LK: ?Sized>(
         &self,
         context: &Context,
@@ -75,6 +86,7 @@ impl<KeyType> Default for Terarium<KeyType>
     where
         KeyType: Eq + Hash + Clone,
 {
+    /// Make empty `Terarium` instance
     fn default() -> Self {
         Self {
             tera: Tera::default(),
@@ -115,20 +127,30 @@ pub struct TerariumBuilder<KeyType>
 }
 
 
+/// Incremental build of the `Terarium` instances
 impl<KeyType> TerariumBuilder<KeyType>
     where
         KeyType: Eq + Hash + Clone,
 {
+    /// Add new template to the new instance.
     pub fn add_template(mut self, key: KeyType, template: Template<KeyType>) -> Self {
         self.templates.insert(key.clone(), template);
         self
     }
 
+    /// Add new group into new instance
     pub fn add_group(mut self, key: KeyType, group: HashMap<KeyType, KeyType>) -> Self {
         self.groups.insert(key.clone(), group);
         self
     }
 
+    /// Check group configuration validity.
+    /// Return empty `Vec` if configuration is valid.
+    /// Return `Vec` of tuples where members are:
+    /// 1. group key
+    /// 2. member key
+    /// 3. template key
+    /// Of invalid group configuration (e.g. missing template)
     pub fn check_group_config_validity(&self) -> Vec<(KeyType, KeyType, KeyType)> {
         self.groups
             .iter()
@@ -145,6 +167,7 @@ impl<KeyType> TerariumBuilder<KeyType>
             .collect()
     }
 
+    /// Build new `Terarium` instance based on stored templates and groups.
     pub fn build(self) -> Result<Terarium<KeyType>, TerariumBuilderError<KeyType>> {
         let check_result = self.check_group_config_validity();
         if !check_result.is_empty() {
@@ -180,16 +203,19 @@ impl<KeyType> TerariumBuilder<KeyType>
 }
 
 
+/// Simplify building template groups.
 pub struct TemplateGroupBuilder<KeyType> where KeyType: Hash + Eq + Clone {
     group: HashMap<KeyType, KeyType>,
 }
 
 impl<KeyType> TemplateGroupBuilder<KeyType> where KeyType: Hash + Eq + Clone {
-    pub fn add_member(mut self, name: KeyType, template_key: KeyType) -> Self {
-        self.group.insert(name, template_key);
+    /// Add new member to group.
+    pub fn add_member(mut self, member_key: KeyType, template_key: KeyType) -> Self {
+        self.group.insert(member_key, template_key);
         self
     }
 
+    /// Build the group spec.
     pub fn build(self) -> HashMap<KeyType, KeyType> {
         self.group
     }
@@ -227,18 +253,26 @@ impl<KeyType> TerariumBuilder<KeyType>
     where
         KeyType: Eq + Hash + Clone, {
 
+    /// Get template defined by its `key`.
+    /// If no template defined by given `key` exist, return `None`.
     pub fn get_template(&mut self, key: &KeyType) -> Option<&mut Template<KeyType>> {
         self.templates.get_mut(key)
     }
 
+    /// Remove template defined by the `key` from the builder and return it.
+    /// Returns `None` if no template with given `key` is defined.
     pub fn remove_template(&mut self, key: &KeyType) -> Option<Template<KeyType>> {
         self.templates.remove(key)
     }
 
+    /// Get group defined by the `key`.
+    /// Return `None` if no group defined by the `key` is found.
     pub fn get_group(&mut self, key: &KeyType) -> Option<&mut HashMap<KeyType, KeyType>> {
         self.groups.get_mut(key)
     }
 
+    /// Remove group defined by the `key` from the builder and return it.
+    /// Returns `None` if no group with given `key` is defined.
     pub fn remove_group(&mut self, key: &KeyType) -> Option<HashMap<KeyType, KeyType>> {
         self.groups.remove(key)
     }

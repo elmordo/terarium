@@ -12,6 +12,23 @@ cargo install terarium
 
 ## Usage
 
+To create `Terarium` instance, use the `TerariumBuilder`. This builder is able to configure templates and groups and 
+when you add all items, call the `build()` method to retrieve the `Terarium` instance. When preparing `Template` 
+instances, you can add more than one content. Each content is bound to one language key. But language key can have 
+assigned more than one content.
+
+When instance is ready, call `render_template` or `render_group` to render single template or template group defined by 
+its key. Because the library have multi-language support, the language key has to be passed and optional fallback 
+language key. The fallback language is used when the primary language version of a template is not found.
+
+Render result of the single template render is `Result<String, TerariumError>` where the `String` is the rendered 
+content.
+
+Render result of the template group render is `Result<HashMap<String, String>, TerariumError>` Where the `HashMap` 
+contains the data. Keys of the hashmap is group member keys and values are their rendered contents.
+
+## Example
+
 ```rust
 use tera::Context;
 use terarium::{Template, TemplateGroupBuilder, TerariumBuilder};
@@ -56,6 +73,7 @@ fn main() {
     ctx.insert("sender", "Jara Cimrman");
     ctx.insert("username", "Karel Capek");
 
+    // HashMap with group member names as keys and rendered contents as values
     let rendered_group_en = terarium.render_group(&ctx, "greet_email", "en", None).unwrap();
     let rendered_group_cs = terarium.render_group(&ctx, "greet_email", "cs", None).unwrap();
 

@@ -18,7 +18,7 @@ pub struct Template<LanguageKey> {
 
 
 /// Represent one template. The template has one or more contents. These contents are usually the same but in different
-/// languages. Each content can be assigned only to one language but one language can has more then one contents.
+/// languages. Each content can be assigned only to one language but one language can has more then one contents.ash
 impl<LanguageKey> Template<LanguageKey> where LanguageKey: Eq + Hash + Clone {
     /// Consume self and return the `ContentBuilder`
     pub fn content_builder(self) -> ContentBuilder<LanguageKey> {

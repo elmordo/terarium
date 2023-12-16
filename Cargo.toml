@@ -12,6 +12,8 @@ edition = "2021"
 keywords = ["template", "multi-template", "tera", "markup", "jinja2"]
 categories = ["template-engine"]
 rust-version = "1.71.0"
+homepage = "https://github.com/elmordo/terarium"
+repository = "https://github.com/elmordo/terarium"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

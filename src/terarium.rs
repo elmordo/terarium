@@ -9,9 +9,9 @@ use thiserror::Error;
 use crate::Template;
 
 
-/// Group templates and render single templates or template groups.
-/// Multi-language  support is provided by the Terarium.
-/// The generic parameter is type of template/group/language key
+/// Wrapper over the `Tera` templating engine with capability of template bulk rendering.
+/// Each template can exists in more than one version (support for multi-language templates).
+/// An instance of the `Terarium` is built with the `TerariumBuilder`.
 pub struct Terarium<KeyType>
     where
         KeyType: Eq + Hash + Clone,
@@ -117,6 +117,7 @@ impl From<TeraError> for TerariumError {
 }
 
 
+/// Build the `Terarium` instance.
 #[derive(Default)]
 pub struct TerariumBuilder<KeyType>
     where
@@ -127,7 +128,6 @@ pub struct TerariumBuilder<KeyType>
 }
 
 
-/// Incremental build of the `Terarium` instances
 impl<KeyType> TerariumBuilder<KeyType>
     where
         KeyType: Eq + Hash + Clone,

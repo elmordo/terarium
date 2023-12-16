@@ -1,6 +1,7 @@
 use tera::Context;
 use terarium::{Template, TemplateGroupBuilder, TerariumBuilder};
 
+/// The Terarium can create logical template groups and render them together,
 fn main() {
     let terarium = TerariumBuilder::<String>::default()
         .add_template(

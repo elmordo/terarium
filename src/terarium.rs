@@ -12,22 +12,17 @@ use crate::Template;
 /// Wrapper over the `Tera` templating engine with capability of template bulk rendering.
 /// Each template can exists in more than one version (support for multi-language templates).
 /// An instance of the `Terarium` is built with the `TerariumBuilder`.
-pub struct Terarium<KeyType>
-    where
-        KeyType: Eq + Hash + Clone,
-{
+#[derive(Clone, Default)]
+pub struct Terarium  {
     /// Internal Tera template
     tera: Tera,
     /// Template by template key lookup.
-    template_map: HashMap<KeyType, HashMap<KeyType, String>>,
+    template_map: HashMap<String, HashMap<String, String>>,
     /// Group by group key lookup.
-    groups: HashMap<KeyType, HashMap<KeyType, KeyType>>,
+    groups: HashMap<String, HashMap<String, String>>,
 }
 
-impl<KeyType> Terarium<KeyType>
-    where
-        KeyType: Eq + Hash + Clone,
-{
+impl Terarium  {
     /// Render single template identified by its key.
     /// The `Tera` context is accepted for rendering.
     pub fn render_template<K: ?Sized, LK: ?Sized>(
@@ -38,8 +33,8 @@ impl<KeyType> Terarium<KeyType>
         fallback_language: Option<&LK>,
     ) -> Result<String, TerariumError>
         where
-            KeyType: Borrow<K>,
-            KeyType: Borrow<LK>,
+            String: Borrow<K>,
+            String: Borrow<LK>,
             K: Hash + Eq,
             LK: Hash + Eq,
     {
@@ -62,15 +57,15 @@ impl<KeyType> Terarium<KeyType>
         group_key: &K,
         language: &LK,
         fallback_language: Option<&LK>,
-    ) -> Result<HashMap<KeyType, String>, TerariumError>
+    ) -> Result<HashMap<String, String>, TerariumError>
         where
-            KeyType: Borrow<K>,
-            KeyType: Borrow<LK>,
+            String: Borrow<K>,
+            String: Borrow<LK>,
             K: Hash + Eq,
             LK: Hash + Eq,
     {
         let group = self.groups.get(group_key).ok_or_else(|| TerariumError::GroupNotFound)?;
-        let mut result = HashMap::<KeyType, String>::new();
+        let mut result = HashMap::<String, String>::new();
 
         for (member_key, template_key) in group.iter() {
             let content = self.render_template(context, template_key, language, fallback_language)?;
@@ -81,20 +76,6 @@ impl<KeyType> Terarium<KeyType>
     }
 }
 
-
-impl<KeyType> Default for Terarium<KeyType>
-    where
-        KeyType: Eq + Hash + Clone,
-{
-    /// Make empty `Terarium` instance
-    fn default() -> Self {
-        Self {
-            tera: Tera::default(),
-            template_map: HashMap::new(),
-            groups: HashMap::new(),
-        }
-    }
-}
 
 #[derive(Debug, Error)]
 pub enum TerariumError {
@@ -119,27 +100,21 @@ impl From<TeraError> for TerariumError {
 
 /// Build the `Terarium` instance.
 #[derive(Default)]
-pub struct TerariumBuilder<KeyType>
-    where
-        KeyType: Eq + Hash + Clone,
-{
-    templates: HashMap<KeyType, Template<KeyType>>,
-    groups: HashMap<KeyType, HashMap<KeyType, KeyType>>,
+pub struct TerariumBuilder  {
+    templates: HashMap<String, Template<String>>,
+    groups: HashMap<String, HashMap<String, String>>,
 }
 
 
-impl<KeyType> TerariumBuilder<KeyType>
-    where
-        KeyType: Eq + Hash + Clone,
-{
+impl TerariumBuilder  {
     /// Add new template to the new instance.
-    pub fn add_template(mut self, key: KeyType, template: Template<KeyType>) -> Self {
+    pub fn add_template(mut self, key: String, template: Template<String>) -> Self {
         self.templates.insert(key.clone(), template);
         self
     }
 
     /// Add new group into new instance
-    pub fn add_group(mut self, key: KeyType, group: HashMap<KeyType, KeyType>) -> Self {
+    pub fn add_group(mut self, key: String, group: HashMap<String, String>) -> Self {
         self.groups.insert(key.clone(), group);
         self
     }
@@ -151,7 +126,7 @@ impl<KeyType> TerariumBuilder<KeyType>
     /// 2. member key
     /// 3. template key
     /// Of invalid group configuration (e.g. missing template)
-    pub fn check_group_config_validity(&self) -> Vec<(KeyType, KeyType, KeyType)> {
+    pub fn check_group_config_validity(&self) -> Vec<(String, String, String)> {
         self.groups
             .iter()
             .map(|(group_key, members)| {
@@ -168,7 +143,7 @@ impl<KeyType> TerariumBuilder<KeyType>
     }
 
     /// Build new `Terarium` instance based on stored templates and groups.
-    pub fn build(self) -> Result<Terarium<KeyType>, TerariumBuilderError<KeyType>> {
+    pub fn build(self) -> Result<Terarium, TerariumBuilderError> {
         let check_result = self.check_group_config_validity();
         if !check_result.is_empty() {
             return Err(TerariumBuilderError::GroupIntegrityProblem(check_result));
@@ -192,9 +167,9 @@ impl<KeyType> TerariumBuilder<KeyType>
                         .insert(language_key.clone(), template_name.clone());
                 });
 
-                Ok::<_, TerariumBuilderError<_>>(())
+                Ok::<_, TerariumBuilderError>(())
             })?;
-            Ok::<_, TerariumBuilderError<_>>(())
+            Ok::<_, TerariumBuilderError>(())
         })?;
 
         instance.groups = self.groups;
@@ -232,15 +207,15 @@ impl<KeyType> Default for TemplateGroupBuilder<KeyType> where KeyType: Hash + Eq
 
 
 #[derive(Debug, Error)]
-pub enum TerariumBuilderError<KeyType> {
+pub enum TerariumBuilderError {
     #[error("Unable to build template")]
     TemplateBuildingError(TeraError),
     #[error("Cannot build template groups - some templates are missing")]
-    GroupIntegrityProblem(Vec<(KeyType, KeyType, KeyType)>),
+    GroupIntegrityProblem(Vec<(String, String, String)>),
 }
 
 
-impl<KeyType> From<TeraError> for TerariumBuilderError<KeyType> {
+impl From<TeraError> for TerariumBuilderError {
     fn from(value: TeraError) -> Self {
         Self::TemplateBuildingError(value)
     }
@@ -249,31 +224,29 @@ impl<KeyType> From<TeraError> for TerariumBuilderError<KeyType> {
 
 /// Additional methods for testing
 #[cfg(test)]
-impl<KeyType> TerariumBuilder<KeyType>
-    where
-        KeyType: Eq + Hash + Clone, {
+impl TerariumBuilder {
 
     /// Get template defined by its `key`.
     /// If no template defined by given `key` exist, return `None`.
-    pub fn get_template(&mut self, key: &KeyType) -> Option<&mut Template<KeyType>> {
+    pub fn get_template(&mut self, key: &String) -> Option<&mut Template<String>> {
         self.templates.get_mut(key)
     }
 
     /// Remove template defined by the `key` from the builder and return it.
     /// Returns `None` if no template with given `key` is defined.
-    pub fn remove_template(&mut self, key: &KeyType) -> Option<Template<KeyType>> {
+    pub fn remove_template(&mut self, key: &String) -> Option<Template<String>> {
         self.templates.remove(key)
     }
 
     /// Get group defined by the `key`.
     /// Return `None` if no group defined by the `key` is found.
-    pub fn get_group(&mut self, key: &KeyType) -> Option<&mut HashMap<KeyType, KeyType>> {
+    pub fn get_group(&mut self, key: &String) -> Option<&mut HashMap<String, String>> {
         self.groups.get_mut(key)
     }
 
     /// Remove group defined by the `key` from the builder and return it.
     /// Returns `None` if no group with given `key` is defined.
-    pub fn remove_group(&mut self, key: &KeyType) -> Option<HashMap<KeyType, KeyType>> {
+    pub fn remove_group(&mut self, key: &String) -> Option<HashMap<String, String>> {
         self.groups.remove(key)
     }
 }
@@ -290,52 +263,52 @@ mod tests {
         fn add_template() {
             let mut instance = make_instance();
             instance = instance.add_template(
-                1,
+                "1".to_owned(),
                 Template::default()
                     .content_builder()
-                    .add_content("foo".to_string(), vec![1, 2])
+                    .add_content("foo".to_string(), vec!["1".to_owned(), "2".to_owned()])
                     .build(),
             );
 
             assert_eq!(instance.templates.len(), 1);
-            let template = instance.templates[&1].clone();
+            let template = instance.templates["1"].clone();
             let mut contents = template.collect_contents();
             assert_eq!(contents.len(), 1);
             contents[0].1.sort();
-            assert_eq!(contents, vec![("foo".to_string(), vec![1, 2])]);
+            assert_eq!(contents, vec![("foo".to_string(), vec!["1".to_owned(), "2".to_owned()])]);
         }
 
         #[test]
         fn group_manipulation() {
             let mut instance = make_instance();
-            instance = instance.add_group(1, TemplateGroupBuilder::default().add_member(1, 1).build());
-            let grp = instance.get_group(&1);
+            instance = instance.add_group("1".to_owned(), TemplateGroupBuilder::default().add_member("1".to_owned(), "1".to_owned()).build());
+            let grp = instance.get_group(&"1".to_owned());
             assert!(grp.is_some());
             let grp = grp.unwrap();
-            assert_eq!(grp.clone(), HashMap::<usize, usize>::from([(1, 1)]));
+            assert_eq!(grp.clone(), HashMap::<String, String>::from([("1".to_owned(), "1".to_owned())]));
 
-            instance.remove_group(&1);
-            assert!(instance.get_group(&1).is_none())
+            instance.remove_group(&"1".to_owned());
+            assert!(instance.get_group(&"1".to_owned()).is_none())
         }
 
         #[test]
         fn check_group_configuration() {
             let mut instance = make_instance();
-            instance = instance.add_template(1, Template::default());
-            instance = instance.add_template(2, Template::default());
+            instance = instance.add_template("1".to_owned(), Template::default());
+            instance = instance.add_template("2".to_owned(), Template::default());
             instance =  instance.add_group(
-                100,
+                "100".to_owned(),
                 TemplateGroupBuilder::default()
-                    .add_member(10, 1)
-                    .add_member(20, 2)
-                    .add_member(30, 3)
+                    .add_member("10".to_owned(), "1".to_owned())
+                    .add_member("20".to_owned(), "2".to_owned())
+                    .add_member("30".to_owned(), "3".to_owned())
                     .build(),
             );
 
-            assert_eq!(instance.check_group_config_validity(), vec![(100, 30, 3)]);
+            assert_eq!(instance.check_group_config_validity(), vec![("100".to_owned(), "30".to_owned(), "3".to_owned())]);
         }
 
-        fn make_instance() -> TerariumBuilder<usize> {
+        fn make_instance() -> TerariumBuilder {
             TerariumBuilder::default()
         }
     }
@@ -405,7 +378,7 @@ mod tests {
             })
         }
 
-        fn make_instance() -> Terarium<String> {
+        fn make_instance() -> Terarium {
             let mut builder = TerariumBuilder::default();
             builder = builder
                 .add_template(

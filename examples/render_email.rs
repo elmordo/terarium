@@ -3,7 +3,7 @@ use terarium::{Template, TemplateGroupBuilder, TerariumBuilder};
 
 /// The Terarium can create logical template groups and render them together,
 fn main() {
-    let terarium = TerariumBuilder::<String>::default()
+    let terarium = TerariumBuilder::default()
         .add_template(
             "greet_subject".to_owned(),
             Template::<String>::default()

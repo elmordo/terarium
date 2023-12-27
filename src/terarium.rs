@@ -101,14 +101,14 @@ impl From<TeraError> for TerariumError {
 /// Build the `Terarium` instance.
 #[derive(Default)]
 pub struct TerariumBuilder  {
-    templates: HashMap<String, Template<String>>,
+    templates: HashMap<String, Template>,
     groups: HashMap<String, HashMap<String, String>>,
 }
 
 
 impl TerariumBuilder  {
     /// Add new template to the new instance.
-    pub fn add_template(mut self, key: String, template: Template<String>) -> Self {
+    pub fn add_template(mut self, key: String, template: Template) -> Self {
         self.templates.insert(key.clone(), template);
         self
     }
@@ -228,13 +228,13 @@ impl TerariumBuilder {
 
     /// Get template defined by its `key`.
     /// If no template defined by given `key` exist, return `None`.
-    pub fn get_template(&mut self, key: &String) -> Option<&mut Template<String>> {
+    pub fn get_template(&mut self, key: &String) -> Option<&mut Template> {
         self.templates.get_mut(key)
     }
 
     /// Remove template defined by the `key` from the builder and return it.
     /// Returns `None` if no template with given `key` is defined.
-    pub fn remove_template(&mut self, key: &String) -> Option<Template<String>> {
+    pub fn remove_template(&mut self, key: &String) -> Option<Template> {
         self.templates.remove(key)
     }
 

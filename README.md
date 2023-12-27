@@ -112,3 +112,10 @@ See more examples in the project's repository.
 
 There is no typo in name of this library. Double `r` could lead to confusion with the
 [Terra](https://crates.io/crates/terra) library which is absolutely out of this library scope. :-)  
+
+# Changes in 0.2
+
+* Simplification of the `Template` struct api (when content is added, it cannot be changed)
+* Content can be named
+
+For full changelog see CHANGELOG.md

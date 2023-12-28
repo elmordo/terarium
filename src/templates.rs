@@ -2,6 +2,8 @@ use std::collections::HashSet;
 
 use thiserror::Error;
 
+
+/// Contains data for `Tera` template with language mutations.
 #[derive(Clone, Default)]
 pub struct Template {
     /// List of available contents for the template in different languages and dialects
@@ -62,11 +64,14 @@ impl Template {
 }
 
 
+/// Errors returned by template operations.
 #[derive(Debug, Error, PartialEq)]
 pub enum TemplateError {
+    /// Two contents in the template has same name.
     #[error("Name {0} is used by other template")]
     DuplicatedContentName(String),
 
+    /// Two contents in the template has assigned same language.
     #[error("Language {0} is used by other template")]
     DuplicatedContentLanguages(String),
 }
@@ -75,13 +80,18 @@ pub enum TemplateError {
 /// Represent content of template
 #[derive(Clone, Default, Debug)]
 pub struct Content {
+    /// Template content.
     pub content: String,
+    /// Assigned languages.
     pub languages: Vec<String>,
+    /// Name of the content.
+    /// The name can be used for referenced for example by {% include %} statement.
     pub name: Option<String>,
 }
 
 
 impl Content {
+    /// Create new instance without name
     pub fn new(content: String, languages: Vec<String>) -> Self {
         Self {
             content,
@@ -90,6 +100,7 @@ impl Content {
         }
     }
 
+    /// Create new instance with name set
     pub fn new_named(content: String, languages: Vec<String>, name: String) -> Self {
         Self {
             content,

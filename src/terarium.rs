@@ -76,15 +76,20 @@ impl Terarium {
 }
 
 
+/// Errors returned by `Terarium` operations.
 #[derive(Debug, Error)]
 pub enum TerariumError {
+    /// Requested template was not found.
     #[error("There is no template")]
     TemplateNotFound,
+    /// Request language was not found for template.
     #[error("Language not found")]
     LanguageNotFound,
+    /// Requested group was not found.
     #[error("There is no group")]
     GroupNotFound,
 
+    /// Error propagated from underlying `Tera` instance.
     #[error("Error when rendering template")]
     RenderingFailed(TeraError),
 }
@@ -179,10 +184,13 @@ impl TemplateGroupBuilder {
 }
 
 
+/// Errors returned by `TerariumBuilder` struct.
 #[derive(Debug, Error)]
 pub enum TerariumBuilderError {
+    /// Cannot build template in underlying `Tera` instance.
     #[error("Unable to build template")]
     TemplateBuildingError(TeraError),
+    /// Template was not found (when building group).
     #[error("Cannot build template groups - some templates are missing")]
     TemplateNotFound(String),
 }

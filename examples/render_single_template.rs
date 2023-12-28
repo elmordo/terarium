@@ -4,12 +4,14 @@ use terarium::{Content, Template, TerariumBuilder};
 
 /// The Terarium can render single template.
 fn main() {
-    let mut tpl = Template::default();
-    tpl.add_content(Content::new("This is my template #{{tpl_number}}".to_owned(), vec!["en".to_owned()])).unwrap();
-    tpl.add_content(Content::new("Toto je šablona #{{tpl_number}}".to_owned(), vec!["cs".to_owned()])).unwrap();
-
     let mut builder = TerariumBuilder::default();
-    builder.add_template("my_template".to_owned(), tpl).unwrap();
+    builder.add_template(
+        "my_template".to_owned(),
+        Template::new(vec![
+            Content::new("This is my template #{{tpl_number}}".to_owned(), vec!["en".to_owned()]),
+            Content::new("Toto je šablona #{{tpl_number}}".to_owned(), vec!["cs".to_owned()]),
+        ]).unwrap()
+    ).unwrap();
 
     let terarium = builder.build().unwrap();
 

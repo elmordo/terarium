@@ -2,7 +2,7 @@
 
 [![Tests](https://github.com/elmordo/terarium/actions/workflows/tests.yml/badge.svg)](https://github.com/elmordo/terarium/actions/workflows/tests.yml)
 
-Terarium is library for rendering groups of templates using the [Tera](https://github.com/Keats/tera/tree/masterTera) templating library.
+Terarium is library for rendering groups of templates using the [Tera](https://github.com/Keats/tera) templating library.
 
 ## Installation
 

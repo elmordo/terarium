@@ -13,7 +13,7 @@ use crate::Template;
 /// Each template can exists in more than one version (support for multi-language templates).
 /// An instance of the `Terarium` is built with the `TerariumBuilder`.
 #[derive(Clone, Default)]
-pub struct Terarium  {
+pub struct Terarium {
     /// Internal Tera template
     tera: Tera,
     /// Template by template key lookup.
@@ -22,7 +22,7 @@ pub struct Terarium  {
     groups: HashMap<String, HashMap<String, String>>,
 }
 
-impl Terarium  {
+impl Terarium {
     /// Render single template identified by its key.
     /// The `Tera` context is accepted for rendering.
     pub fn render_template<K: ?Sized, LK: ?Sized>(
@@ -100,13 +100,13 @@ impl From<TeraError> for TerariumError {
 
 /// Build the `Terarium` instance.
 #[derive(Default)]
-pub struct TerariumBuilder  {
+pub struct TerariumBuilder {
     templates: HashMap<String, Template>,
     groups: HashMap<String, HashMap<String, String>>,
 }
 
 
-impl TerariumBuilder  {
+impl TerariumBuilder {
     /// Add new template to the new instance.
     /// If template exist, it will be replaced
     pub fn add_template(mut self, key: String, template: Template) -> Result<Self, TerariumBuilderError> {
@@ -120,7 +120,7 @@ impl TerariumBuilder  {
         // Check templates exist
         for (_, tpl_name) in group.iter() {
             if !self.templates.contains_key(tpl_name) {
-                return Err(TerariumBuilderError::TemplateNotFound(tpl_name.to_owned()))
+                return Err(TerariumBuilderError::TemplateNotFound(tpl_name.to_owned()));
             }
         }
 
@@ -207,7 +207,6 @@ impl From<TeraError> for TerariumBuilderError {
 /// Additional methods for testing
 #[cfg(test)]
 impl TerariumBuilder {
-
     /// Get template defined by its `key`.
     /// If no template defined by given `key` exist, return `None`.
     pub fn get_template(&mut self, key: &String) -> Option<&mut Template> {
@@ -248,7 +247,7 @@ mod tests {
             instance = instance.add_template(
                 "1".to_owned(),
                 Template::default()
-                    .add_content(Content::new("foo".to_string(), vec!["1".to_owned(), "2".to_owned()])).unwrap()
+                    .add_content(Content::new("foo".to_string(), vec!["1".to_owned(), "2".to_owned()])).unwrap(),
             ).unwrap();
 
             assert_eq!(instance.templates.len(), 1);
@@ -276,7 +275,7 @@ mod tests {
             let mut instance = make_instance();
             instance = instance.add_template("1".to_owned(), Template::default()).unwrap();
             instance = instance.add_template("2".to_owned(), Template::default()).unwrap();
-            let result =  instance.add_group(
+            let result = instance.add_group(
                 "100".to_owned(),
                 TemplateGroupBuilder::default()
                     .add_member("10".to_owned(), "1".to_owned())
@@ -358,6 +357,30 @@ mod tests {
             })
         }
 
+        #[test]
+        fn render_nested_templates() {
+            let instance = TerariumBuilder::default()
+                .add_template(
+                    "tpl_a".to_owned(),
+                    Template::default().add_content(
+                        Content::new("This is content {{value_1}} {% include 'tpl_b_cs' %}".to_owned(), vec!["cs".to_owned()])
+                    ).unwrap(),
+                ).unwrap()
+                .add_template(
+                    "tpl_b".to_owned(),
+                    Template::default().add_content(
+                        Content::new_named("This is nested {{value_2}}".to_owned(), vec!["cs".to_owned()], "tpl_b_cs".to_owned())
+                    ).unwrap(),
+                ).unwrap()
+                .build().unwrap();
+            let mut ctx = Context::default();
+            ctx.insert("value_1", "foo");
+            ctx.insert("value_2", "bar");
+
+            let result = instance.render_template(&ctx, "tpl_a", "cs", None).unwrap();
+            assert_eq!(result.as_str(), "This is content foo This is nested bar");
+        }
+
         fn make_instance() -> Terarium {
             let mut builder = TerariumBuilder::default();
             builder = builder
@@ -365,12 +388,12 @@ mod tests {
                     "template_a".to_owned(),
                     Template::default()
                         .add_content(Content::new("template_a cs {{name}}".to_owned(), vec!["cs".to_owned()])).unwrap()
-                        .add_content(Content::new("template_a en {{name}}".to_owned(), vec!["en".to_owned()])).unwrap()
+                        .add_content(Content::new("template_a en {{name}}".to_owned(), vec!["en".to_owned()])).unwrap(),
                 ).unwrap();
             builder = builder.add_template(
                 "template_b".to_owned(),
                 Template::default()
-                    .add_content(Content::new("template_b en {{surname}}".to_owned(), vec!["en".to_owned()])).unwrap()
+                    .add_content(Content::new("template_b en {{surname}}".to_owned(), vec!["en".to_owned()])).unwrap(),
             ).unwrap();
             builder = builder.add_group(
                 "group_a".to_owned(),

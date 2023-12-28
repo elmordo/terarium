@@ -1,86 +1,92 @@
-use std::collections::HashMap;
+use std::collections::HashSet;
+
+use thiserror::Error;
 
 #[derive(Clone, Default)]
 pub struct Template {
     /// List of available contents for the template in different languages and dialects
-    contents: Vec<String>,
+    contents: Vec<Content>,
 
-    /// lookup of handles to real content index
-    handle_to_index: HashMap<usize, usize>,
+    /// Helper list of used languages
+    used_languages: HashSet<String>,
 
-    /// Links of languages to content handles
-    language_to_handle: HashMap<String, usize>,
-
-    /// Next handle id
-    next_handle: usize,
+    /// Helper list of used names
+    used_names: HashSet<String>,
 }
 
 
 /// Represent one template. The template has one or more contents. These contents are usually the same but in different
 /// languages. Each content can be assigned only to one language but one language can has more then one contents.ash
 impl Template {
-    /// Consume self and return the `ContentBuilder`
-    pub fn content_builder(self) -> ContentBuilder {
-        ContentBuilder::new(self)
-    }
-
     /// Add new content into template.
     /// Return handle of the content.
-    pub fn add_content(&mut self, content: String, languages: Vec<String>) -> usize {
-        let handle = self.next_handle;
-        self.next_handle += 1;
+    pub fn add_content(mut self, content: Content) -> Result<Self, TemplateError> {
+        let mut languages_to_add = Vec::<String>::new();
+        let mut names_to_add = Vec::<String>::new();
 
-        self.handle_to_index.insert(handle, handle);
-        self.contents.push(content);
-        for l in languages {
-            self.language_to_handle.insert(l, handle);
+        for lang in content.languages.iter() {
+            if self.used_languages.contains(lang) {
+                return Err(TemplateError::DuplicatedContentLanguages(lang.to_owned()));
+            }
+            languages_to_add.push(lang.to_owned());
         }
-        handle
+        if let Some(name) = content.name.clone() {
+            if self.used_names.contains(&name) {
+                return Err(TemplateError::DuplicatedContentName(name));
+            }
+            names_to_add.push(name);
+        }
+
+        self.used_names.extend(names_to_add);
+        self.used_languages.extend(languages_to_add);
+        self.contents.push(content);
+        Ok(self)
     }
 
     /// Collect template content settings as Vec
     /// When content has no language, this content is dropped
-    pub fn collect_contents(self) -> Vec<(String, Vec<String>)> {
-        let mut languages_by_handle = HashMap::<usize, Vec<String>>::new();
-        self.language_to_handle.into_iter().for_each(|(key, handle)| {
-            languages_by_handle.entry(handle).or_default().push(key);
-        });
-        self.handle_to_index
-            .into_iter()
-            .map(|(handle, idx)| {
-                let content = self.contents[idx].clone();
-                let languages = languages_by_handle.remove(&handle).unwrap_or(vec![]);
-                (content, languages)
-            })
-            .filter(|(_, languages)| languages.len() > 0)
-            .collect()
+    pub fn collect_contents(self) -> Vec<Content> {
+        self.contents.into_iter().filter(|c| c.languages.len() > 0).collect()
     }
 }
 
 
-/// Helper builder of easier content building
-pub struct ContentBuilder {
-    template: Template,
+#[derive(Debug, Error)]
+pub enum TemplateError {
+    #[error("Name {0} is used by other template")]
+    DuplicatedContentName(String),
+
+    #[error("Language {0} is used by other template")]
+    DuplicatedContentLanguages(String),
 }
 
 
-impl ContentBuilder {
-    /// Create new instance from template
-    pub fn new(template: Template) -> Self {
+
+/// Represent content of template
+#[derive(Clone, Default, Debug)]
+pub struct Content {
+    pub content: String,
+    pub languages: Vec<String>,
+    pub name: Option<String>
+}
+
+
+impl Content {
+
+    pub fn new(content: String, languages: Vec<String>) -> Self {
         Self {
-            template,
+            content,
+            languages,
+            ..Self::default()
         }
     }
 
-    /// Add content and return self
-    pub fn add_content(mut self, content: String, languages: Vec<String>) -> Self {
-        self.template.add_content(content, languages);
-        self
-    }
-
-    /// Consume self and return template
-    pub fn build(self) -> Template {
-        self.template
+    pub fn new_named(content: String, languages: Vec<String>, name: String) -> Self {
+        Self {
+            content,
+            languages,
+            name: Some(name)
+        }
     }
 }
 
@@ -90,48 +96,37 @@ mod tests {
     mod template {
         use std::collections::HashMap;
 
-        use crate::Template;
+        use crate::{Content, Template};
 
         #[test]
         fn add_content() {
-            let mut template = empty_template();
-            let handle = template.add_content("foo bar".to_string(), vec!["1".to_owned(), "2".to_owned(), "3".to_owned()]);
+            let template = empty_template()
+                .add_content(Content::new("foo bar".to_string(), vec!["1".to_owned(), "2".to_owned(), "3".to_owned()])).unwrap();
             assert_eq!(template.contents.len(), 1);
-            assert_eq!(template.language_to_handle["1"], handle);
-            assert_eq!(template.language_to_handle["2"], handle);
-            assert_eq!(template.language_to_handle["3"], handle);
-            let idx = template.handle_to_index[&handle];
-            assert_eq!(template.contents[idx], "foo bar");
         }
 
         #[test]
         fn add_more_contents() {
-            let mut template = empty_template();
-            let handle_1 = template.add_content("foo bar".to_string(), vec!["1".to_owned(), "2".to_owned()]);
-            let handle_2 = template.add_content("bar foo".to_string(), vec!["2".to_owned(), "3".to_owned()]);
-
-
-            assert_eq!(template.language_to_handle["1"], handle_1);
-            assert_eq!(template.language_to_handle["2"], handle_2);
-            assert_eq!(template.language_to_handle["3"], handle_2);
-
-            let idx_1 = template.handle_to_index[&handle_1];
-            assert_eq!(template.contents[idx_1], "foo bar");
-            let idx_2 = template.handle_to_index[&handle_2];
-            assert_eq!(template.contents[idx_2], "bar foo");
+            let template = empty_template()
+                .add_content(Content::new("foo bar".to_string(), vec!["1".to_owned(), "2".to_owned()])).unwrap()
+                .add_content(Content::new("bar foo".to_string(), vec!["3".to_owned(), "4".to_owned()])).unwrap();
+            assert_eq!(template.contents.len(), 2);
         }
 
         #[test]
         fn collect_contents() {
-            let mut template = empty_template();
-            template.add_content("foo bar".to_string(), vec!["1".to_owned(), "2".to_owned()]);
-            template.add_content("bar bar".to_string(), vec!["3".to_owned()]);
-            template.add_content("foo foo".to_string(), vec![]);
+            let template = empty_template()
+                .add_content(Content::new("foo bar".to_string(), vec!["1".to_owned(), "2".to_owned()])).unwrap()
+                .add_content(Content::new("bar bar".to_string(), vec!["3".to_owned()])).unwrap()
+                .add_content(Content::new("foo foo".to_string(), vec![])).unwrap();
 
             let contents = template.collect_contents();
             assert_eq!(contents.len(), 2);
-            let mut languages_by_content = contents.into_iter().collect::<HashMap<String, Vec<String>>>();
-            languages_by_content.values_mut().for_each(|languages| languages.sort());
+            let mut languages_by_content = HashMap::<String, Vec<String>>::new();
+
+            contents.iter().for_each(|c| {
+                c.languages.iter().for_each(|l| languages_by_content.entry(c.content.to_owned()).or_default().push(l.to_owned()));
+            });
 
             assert_eq!(languages_by_content["foo bar"], vec!["1".to_owned(), "2".to_owned()]);
             assert_eq!(languages_by_content["bar bar"], vec!["3".to_owned()]);

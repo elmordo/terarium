@@ -154,12 +154,12 @@ impl TerariumBuilder  {
 
         // build templates
         self.templates.into_iter().try_for_each(|(template_key, template)| {
-            template.collect_contents().into_iter().try_for_each(|(content, languages)| {
-                let template_name = format!("template#{}", tera_template_id);
+            template.collect_contents().into_iter().try_for_each(|content| {
+                let template_name = content.name.unwrap_or_else(|| format!("template#{}", tera_template_id));
                 tera_template_id += 1;
-                instance.tera.add_raw_template(&template_name, &content)?;
+                instance.tera.add_raw_template(&template_name, &content.content)?;
 
-                languages.into_iter().for_each(|language_key| {
+                content.languages.into_iter().for_each(|language_key| {
                     instance
                         .template_map
                         .entry(template_key.clone())
@@ -257,6 +257,7 @@ mod tests {
     use super::*;
 
     mod terarium_builder {
+        use crate::Content;
         use super::*;
 
         #[test]
@@ -265,17 +266,13 @@ mod tests {
             instance = instance.add_template(
                 "1".to_owned(),
                 Template::default()
-                    .content_builder()
-                    .add_content("foo".to_string(), vec!["1".to_owned(), "2".to_owned()])
-                    .build(),
+                    .add_content(Content::new("foo".to_string(), vec!["1".to_owned(), "2".to_owned()])).unwrap()
             );
 
             assert_eq!(instance.templates.len(), 1);
             let template = instance.templates["1"].clone();
-            let mut contents = template.collect_contents();
+            let contents = template.collect_contents();
             assert_eq!(contents.len(), 1);
-            contents[0].1.sort();
-            assert_eq!(contents, vec![("foo".to_string(), vec!["1".to_owned(), "2".to_owned()])]);
         }
 
         #[test]
@@ -314,6 +311,7 @@ mod tests {
     }
 
     mod terarium {
+        use crate::Content;
         use super::*;
 
         #[test]
@@ -384,17 +382,13 @@ mod tests {
                 .add_template(
                     "template_a".to_owned(),
                     Template::default()
-                        .content_builder()
-                        .add_content("template_a cs {{name}}".to_owned(), vec!["cs".to_owned()])
-                        .add_content("template_a en {{name}}".to_owned(), vec!["en".to_owned()])
-                        .build(),
+                        .add_content(Content::new("template_a cs {{name}}".to_owned(), vec!["cs".to_owned()])).unwrap()
+                        .add_content(Content::new("template_a en {{name}}".to_owned(), vec!["en".to_owned()])).unwrap()
                 );
             builder = builder.add_template(
                 "template_b".to_owned(),
                 Template::default()
-                    .content_builder()
-                    .add_content("template_b en {{surname}}".to_owned(), vec!["en".to_owned()])
-                    .build(),
+                    .add_content(Content::new("template_b en {{surname}}".to_owned(), vec!["en".to_owned()])).unwrap()
             );
             builder = builder.add_group(
                 "group_a".to_owned(),

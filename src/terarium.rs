@@ -8,7 +8,6 @@ use thiserror::Error;
 
 use crate::Template;
 
-
 /// Wrapper over the `Tera` templating engine with capability of template bulk rendering.
 /// Each template can exists in more than one version (support for multi-language templates).
 /// An instance of the `Terarium` is built with the `TerariumBuilder`.
@@ -109,14 +108,14 @@ pub struct TerariumBuilder {
 impl TerariumBuilder {
     /// Add new template to the new instance.
     /// If template exist, it will be replaced
-    pub fn add_template(mut self, key: String, template: Template) -> Result<Self, TerariumBuilderError> {
+    pub fn add_template(&mut self, key: String, template: Template) -> Result<(), TerariumBuilderError> {
         self.templates.insert(key.clone(), template);
-        Ok(self)
+        Ok(())
     }
 
     /// Add new group into new instance
     /// If group with same name exists, it is replaced.
-    pub fn add_group(mut self, key: String, group: HashMap<String, String>) -> Result<Self, TerariumBuilderError> {
+    pub fn add_group(&mut self, key: String, group: HashMap<String, String>) -> Result<(), TerariumBuilderError> {
         // Check templates exist
         for (_, tpl_name) in group.iter() {
             if !self.templates.contains_key(tpl_name) {
@@ -126,7 +125,7 @@ impl TerariumBuilder {
 
         // Add group to lookup
         self.groups.insert(key, group);
-        Ok(self)
+        Ok(())
     }
 
     /// Build new `Terarium` instance based on stored templates and groups.
@@ -231,15 +230,19 @@ mod tests {
 
     mod terarium_builder {
         use crate::Content;
+
         use super::*;
 
         #[test]
         fn add_template() {
             let mut instance = make_instance();
-            instance = instance.add_template(
+
+            let mut tpl = Template::default();
+            tpl.add_content(Content::new("foo".to_string(), vec!["1".to_owned(), "2".to_owned()])).unwrap();
+
+            instance.add_template(
                 "1".to_owned(),
-                Template::default()
-                    .add_content(Content::new("foo".to_string(), vec!["1".to_owned(), "2".to_owned()])).unwrap(),
+                tpl,
             ).unwrap();
 
             assert_eq!(instance.templates.len(), 1);
@@ -250,9 +253,9 @@ mod tests {
 
         #[test]
         fn group_manipulation() {
-            let mut instance = make_instance()
-                .add_template("1".to_owned(), Template::default()).unwrap()
-                .add_group("1".to_owned(), TemplateGroupBuilder::default().add_member("1".to_owned(), "1".to_owned()).build()).unwrap();
+            let mut instance = make_instance();
+            instance.add_template("1".to_owned(), Template::default()).unwrap();
+            instance.add_group("1".to_owned(), TemplateGroupBuilder::default().add_member("1".to_owned(), "1".to_owned()).build()).unwrap();
             let grp = instance.get_group(&"1".to_owned());
             assert!(grp.is_some());
             let grp = grp.unwrap();
@@ -265,8 +268,8 @@ mod tests {
         #[test]
         fn check_group_configuration() {
             let mut instance = make_instance();
-            instance = instance.add_template("1".to_owned(), Template::default()).unwrap();
-            instance = instance.add_template("2".to_owned(), Template::default()).unwrap();
+            instance.add_template("1".to_owned(), Template::default()).unwrap();
+            instance.add_template("2".to_owned(), Template::default()).unwrap();
             let result = instance.add_group(
                 "100".to_owned(),
                 TemplateGroupBuilder::default()
@@ -285,6 +288,7 @@ mod tests {
 
     mod terarium {
         use crate::Content;
+
         use super::*;
 
         #[test]
@@ -351,20 +355,20 @@ mod tests {
 
         #[test]
         fn render_nested_templates() {
-            let instance = TerariumBuilder::default()
-                .add_template(
-                    "tpl_a".to_owned(),
-                    Template::default().add_content(
-                        Content::new("This is content {{value_1}} {% include 'tpl_b_cs' %}".to_owned(), vec!["cs".to_owned()])
-                    ).unwrap(),
-                ).unwrap()
-                .add_template(
-                    "tpl_b".to_owned(),
-                    Template::default().add_content(
-                        Content::new_named("This is nested {{value_2}}".to_owned(), vec!["cs".to_owned()], "tpl_b_cs".to_owned())
-                    ).unwrap(),
-                ).unwrap()
-                .build().unwrap();
+            let mut builder = TerariumBuilder::default();
+            let mut tpl_a = Template::default();
+            tpl_a.add_content(
+                Content::new("This is content {{value_1}} {% include 'tpl_b_cs' %}".to_owned(), vec!["cs".to_owned()])
+            ).unwrap();
+            builder.add_template("tpl_a".to_owned(), tpl_a).unwrap();
+
+            let mut tpl_b = Template::default();
+            tpl_b.add_content(
+                Content::new_named("This is nested {{value_2}}".to_owned(), vec!["cs".to_owned()], "tpl_b_cs".to_owned())
+            ).unwrap();
+            builder.add_template("tpl_b".to_owned(), tpl_b).unwrap();
+
+            let instance = builder.build().unwrap();
             let mut ctx = Context::default();
             ctx.insert("value_1", "foo");
             ctx.insert("value_2", "bar");
@@ -375,19 +379,18 @@ mod tests {
 
         fn make_instance() -> Terarium {
             let mut builder = TerariumBuilder::default();
-            builder = builder
-                .add_template(
-                    "template_a".to_owned(),
-                    Template::default()
-                        .add_content(Content::new("template_a cs {{name}}".to_owned(), vec!["cs".to_owned()])).unwrap()
-                        .add_content(Content::new("template_a en {{name}}".to_owned(), vec!["en".to_owned()])).unwrap(),
-                ).unwrap();
-            builder = builder.add_template(
-                "template_b".to_owned(),
-                Template::default()
-                    .add_content(Content::new("template_b en {{surname}}".to_owned(), vec!["en".to_owned()])).unwrap(),
-            ).unwrap();
-            builder = builder.add_group(
+
+            let mut tpl_a = Template::default();
+            tpl_a.add_content(Content::new("template_a cs {{name}}".to_owned(), vec!["cs".to_owned()])).unwrap();
+            tpl_a.add_content(Content::new("template_a en {{name}}".to_owned(), vec!["en".to_owned()])).unwrap();
+
+            let mut tpl_b = Template::default();
+            tpl_b.add_content(Content::new("template_b en {{surname}}".to_owned(), vec!["en".to_owned()])).unwrap();
+
+            builder.add_template("template_a".to_owned(), tpl_a).unwrap();
+            builder.add_template("template_b".to_owned(), tpl_b).unwrap();
+
+            builder.add_group(
                 "group_a".to_owned(),
                 TemplateGroupBuilder::default()
                     .add_member("A".to_owned(), "template_a".to_owned())

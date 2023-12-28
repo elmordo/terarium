@@ -20,7 +20,7 @@ pub struct Template {
 impl Template {
     /// Add new content into template.
     /// Return handle of the content.
-    pub fn add_content(mut self, content: Content) -> Result<Self, TemplateError> {
+    pub fn add_content(&mut self, content: Content) -> Result<(), TemplateError> {
         let mut languages_to_add = Vec::<String>::new();
         let mut names_to_add = Vec::<String>::new();
 
@@ -40,7 +40,7 @@ impl Template {
         self.used_names.extend(names_to_add);
         self.used_languages.extend(languages_to_add);
         self.contents.push(content);
-        Ok(self)
+        Ok(())
     }
 
     /// Collect template content settings as Vec
@@ -61,18 +61,16 @@ pub enum TemplateError {
 }
 
 
-
 /// Represent content of template
 #[derive(Clone, Default, Debug)]
 pub struct Content {
     pub content: String,
     pub languages: Vec<String>,
-    pub name: Option<String>
+    pub name: Option<String>,
 }
 
 
 impl Content {
-
     pub fn new(content: String, languages: Vec<String>) -> Self {
         Self {
             content,
@@ -85,7 +83,7 @@ impl Content {
         Self {
             content,
             languages,
-            name: Some(name)
+            name: Some(name),
         }
     }
 }
@@ -100,24 +98,24 @@ mod tests {
 
         #[test]
         fn add_content() {
-            let template = empty_template()
-                .add_content(Content::new("foo bar".to_string(), vec!["1".to_owned(), "2".to_owned(), "3".to_owned()])).unwrap();
+            let mut template = empty_template();
+            template.add_content(Content::new("foo bar".to_string(), vec!["1".to_owned(), "2".to_owned(), "3".to_owned()])).unwrap();
             assert_eq!(template.contents.len(), 1);
         }
 
         #[test]
         fn add_more_contents() {
-            let template = empty_template()
-                .add_content(Content::new("foo bar".to_string(), vec!["1".to_owned(), "2".to_owned()])).unwrap()
-                .add_content(Content::new("bar foo".to_string(), vec!["3".to_owned(), "4".to_owned()])).unwrap();
+            let mut template = empty_template();
+            template.add_content(Content::new("foo bar".to_string(), vec!["1".to_owned(), "2".to_owned()])).unwrap();
+            template.add_content(Content::new("bar foo".to_string(), vec!["3".to_owned(), "4".to_owned()])).unwrap();
             assert_eq!(template.contents.len(), 2);
         }
 
         #[test]
         fn add_duplicated_name() {
-            let result = empty_template()
-                .add_content(Content::new_named("foo".to_owned(), vec!["cs".to_owned()], "c1".to_owned())).unwrap()
-                .add_content(Content::new_named("foo".to_owned(), vec!["en".to_owned()], "c1".to_owned()));
+            let mut tpl = empty_template();
+            tpl.add_content(Content::new_named("foo".to_owned(), vec!["cs".to_owned()], "c1".to_owned())).unwrap();
+            let result = tpl.add_content(Content::new_named("foo".to_owned(), vec!["en".to_owned()], "c1".to_owned()));
 
             assert!(result.is_err());
             let err = result.err().unwrap();
@@ -126,9 +124,9 @@ mod tests {
 
         #[test]
         fn add_duplicated_language() {
-            let result = empty_template()
-                .add_content(Content::new("foo".to_owned(), vec!["cs".to_owned()])).unwrap()
-                .add_content(Content::new("foo".to_owned(), vec!["cs".to_owned()]));
+            let mut tpl = empty_template();
+            tpl.add_content(Content::new("foo".to_owned(), vec!["cs".to_owned()])).unwrap();
+            let result = tpl.add_content(Content::new("foo".to_owned(), vec!["cs".to_owned()]));
 
             assert!(result.is_err());
             let err = result.err().unwrap();
@@ -137,10 +135,10 @@ mod tests {
 
         #[test]
         fn collect_contents() {
-            let template = empty_template()
-                .add_content(Content::new("foo bar".to_string(), vec!["1".to_owned(), "2".to_owned()])).unwrap()
-                .add_content(Content::new("bar bar".to_string(), vec!["3".to_owned()])).unwrap()
-                .add_content(Content::new("foo foo".to_string(), vec![])).unwrap();
+            let mut template = empty_template();
+            template.add_content(Content::new("foo bar".to_string(), vec!["1".to_owned(), "2".to_owned()])).unwrap();
+            template.add_content(Content::new("bar bar".to_string(), vec!["3".to_owned()])).unwrap();
+            template.add_content(Content::new("foo foo".to_string(), vec![])).unwrap();
 
             let contents = template.collect_contents();
             assert_eq!(contents.len(), 2);

@@ -18,6 +18,17 @@ pub struct Template {
 /// Represent one template. The template has one or more contents. These contents are usually the same but in different
 /// languages. Each content can be assigned only to one language but one language can has more then one contents.ash
 impl Template {
+
+    /// Create instance from iterable of `Content` instances or return `Err` if creation process failed (e.g. name
+    /// or language conflict).
+    pub fn new(contents: impl Iterator<Item=Content>) -> Result<Self, TemplateError> {
+        let mut instance = Self::default();
+        for c in contents {
+            instance.add_content(c)?;
+        }
+        Ok(instance)
+    }
+
     /// Add new content into template.
     /// Return handle of the content.
     pub fn add_content(&mut self, content: Content) -> Result<(), TemplateError> {

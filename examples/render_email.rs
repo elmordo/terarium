@@ -1,33 +1,27 @@
 use tera::Context;
-use terarium::{Template, TemplateGroupBuilder, TerariumBuilder};
+use terarium::{Content, Template, TemplateGroupBuilder, TerariumBuilder};
 
 /// The Terarium can create logical template groups and render them together,
 fn main() {
-    let terarium = TerariumBuilder::<String>::default()
+    let terarium = TerariumBuilder::default()
         .add_template(
             "greet_subject".to_owned(),
-            Template::<String>::default()
-                .content_builder()
-                .add_content("Greetings from {{sender}}".to_owned(), vec!["en".to_owned()])
-                .add_content("Pozdrav od {{sender}}".to_owned(), vec!["cs".to_owned()])
-                .build()
-        )
+            Template::default()
+                .add_content(Content::new("Greetings from {{sender}}".to_owned(), vec!["en".to_owned()])).unwrap()
+                .add_content(Content::new("Pozdrav od {{sender}}".to_owned(), vec!["cs".to_owned()])).unwrap()
+        ).unwrap()
         .add_template(
             "greet_text".to_owned(),
-            Template::<String>::default()
-                .content_builder()
-                .add_content("Hello {{username}}".to_owned(), vec!["en".to_owned()])
-                .add_content("Nazdar {{username}}".to_owned(), vec!["cs".to_owned()])
-                .build()
-        )
+            Template::default()
+                .add_content(Content::new("Hello {{username}}".to_owned(), vec!["en".to_owned()])).unwrap()
+                .add_content(Content::new("Nazdar {{username}}".to_owned(), vec!["cs".to_owned()])).unwrap()
+        ).unwrap()
         .add_template(
             "greet_html".to_owned(),
-            Template::<String>::default()
-                .content_builder()
-                .add_content("<p>Hello {{username}}</p>".to_owned(), vec!["en".to_owned()])
-                .add_content("<p>Nazdar {{username}}</p>".to_owned(), vec!["cs".to_owned()])
-                .build()
-        )
+            Template::default()
+                .add_content(Content::new("<p>Hello {{username}}</p>".to_owned(), vec!["en".to_owned()])).unwrap()
+                .add_content(Content::new("<p>Nazdar {{username}}</p>".to_owned(), vec!["cs".to_owned()])).unwrap()
+        ).unwrap()
         .add_group(
             "greet_email".to_string(),
             TemplateGroupBuilder::default()
@@ -35,7 +29,7 @@ fn main() {
                 .add_member("text".to_owned(), "greet_text".to_owned())
                 .add_member("html".to_owned(), "greet_html".to_owned())
                 .build()
-        )
+        ).unwrap()
         .build().unwrap();
 
     let mut ctx = Context::new();

@@ -6,7 +6,7 @@ Extension of the Tera template system with template grouping and bulk rendering 
 authors = [
     "Petr Jindra <el.mordo@gmail.com>"
 ]
-version = "0.1.0"
+version = "0.2.0"
 license = "MIT"
 edition = "2021"
 keywords = ["template", "multi-template", "tera", "markup", "jinja2"]

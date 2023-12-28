@@ -1,159 +1,92 @@
-use std::collections::HashMap;
-use std::hash::Hash;
+use std::collections::HashSet;
 
-#[derive(Clone)]
-pub struct Template<LanguageKey> {
+use thiserror::Error;
+
+#[derive(Clone, Default)]
+pub struct Template {
     /// List of available contents for the template in different languages and dialects
-    contents: Vec<String>,
+    contents: Vec<Content>,
 
-    /// lookup of handles to real content index
-    handle_to_index: HashMap<usize, usize>,
+    /// Helper list of used languages
+    used_languages: HashSet<String>,
 
-    /// Links of languages to content handles
-    language_to_handle: HashMap<LanguageKey, usize>,
-
-    /// Next handle id
-    next_handle: usize,
+    /// Helper list of used names
+    used_names: HashSet<String>,
 }
 
 
 /// Represent one template. The template has one or more contents. These contents are usually the same but in different
 /// languages. Each content can be assigned only to one language but one language can has more then one contents.ash
-impl<LanguageKey> Template<LanguageKey> where LanguageKey: Eq + Hash + Clone {
-    /// Consume self and return the `ContentBuilder`
-    pub fn content_builder(self) -> ContentBuilder<LanguageKey> {
-        ContentBuilder::new(self)
-    }
-
+impl Template {
     /// Add new content into template.
     /// Return handle of the content.
-    pub fn add_content(&mut self, content: String, languages: Vec<LanguageKey>) -> usize {
-        let handle = self.next_handle;
-        self.next_handle += 1;
+    pub fn add_content(mut self, content: Content) -> Result<Self, TemplateError> {
+        let mut languages_to_add = Vec::<String>::new();
+        let mut names_to_add = Vec::<String>::new();
 
-        self.handle_to_index.insert(handle, handle);
+        for lang in content.languages.iter() {
+            if self.used_languages.contains(lang) {
+                return Err(TemplateError::DuplicatedContentLanguages(lang.to_owned()));
+            }
+            languages_to_add.push(lang.to_owned());
+        }
+        if let Some(name) = content.name.clone() {
+            if self.used_names.contains(&name) {
+                return Err(TemplateError::DuplicatedContentName(name));
+            }
+            names_to_add.push(name);
+        }
+
+        self.used_names.extend(names_to_add);
+        self.used_languages.extend(languages_to_add);
         self.contents.push(content);
-        for l in languages {
-            self.language_to_handle.insert(l, handle);
-        }
-        handle
-    }
-
-    /// Remove content, identified by its handle, from container.
-    /// If content is removed, return it.
-    /// Return [`None`] if there is no content with `handle`
-    pub fn remove_content(&mut self, handle: usize) -> Option<String> {
-        match self.handle_to_index.remove(&handle) {
-            Some(content_idx) => {
-                // move all indexes after removed by one
-                self.handle_to_index.iter_mut().for_each(|(_, idx)| if *idx > content_idx { *idx -= 1; });
-                // clear language lookup
-                self.language_to_handle.retain(|_, val| *val != handle);
-                // remove the content to get return value
-                let content = self.contents.remove(content_idx);
-                Some(content)
-            }
-            _ => None
-        }
-    }
-
-    /// Replace content identified by its `handle`.
-    /// Return [`Some(String)`] if content was replaced.
-    /// Return [`None`] if no content with given handle is defined.
-    pub fn replace_content(&mut self, handle: usize, content: String) -> Option<String> {
-        match self.handle_to_index.get(&handle) {
-            Some(idx) => {
-                let result = self.contents[*idx].clone();
-                self.contents[*idx] = content;
-                Some(result)
-            }
-            _ => None
-        }
-    }
-
-    /// Reassign languages of content defined by the `handle`.
-    /// Return [`Some(Vec<usize>)`] of old language settings if replacement was done successfully.
-    /// Return [`None`] if given `handle` is invalid
-    pub fn reassign_languages(&mut self, handle: usize, languages: Vec<LanguageKey>) -> Option<Vec<LanguageKey>> {
-        match self.handle_to_index.get(&handle) {
-            Some(_) => {
-                let mut old_languages = Vec::new();
-                self.language_to_handle = self.language_to_handle
-                    .clone()
-                    .into_iter()
-                    .filter(|item| {
-                        if item.1 == handle {
-                            old_languages.push(item.0.clone());
-                            false
-                        } else {
-                            true
-                        }
-                    })
-                    .collect();
-                for new_languages in languages {
-                    self.language_to_handle.insert(new_languages, handle);
-                }
-                Some(old_languages)
-            }
-            None => None
-        }
+        Ok(self)
     }
 
     /// Collect template content settings as Vec
     /// When content has no language, this content is dropped
-    pub fn collect_contents(self) -> Vec<(String, Vec<LanguageKey>)> {
-        let mut languages_by_handle = HashMap::<usize, Vec<LanguageKey>>::new();
-        self.language_to_handle.into_iter().for_each(|(key, handle)| {
-            languages_by_handle.entry(handle).or_default().push(key);
-        });
-        self.handle_to_index
-            .into_iter()
-            .map(|(handle, idx)| {
-                let content = self.contents[idx].clone();
-                let languages = languages_by_handle.remove(&handle).unwrap_or(vec![]);
-                (content, languages)
-            })
-            .filter(|(_, languages)| languages.len() > 0)
-            .collect()
+    pub fn collect_contents(self) -> Vec<Content> {
+        self.contents.into_iter().filter(|c| c.languages.len() > 0).collect()
     }
 }
 
 
-impl<LanguageKey> Default for Template<LanguageKey> {
-    fn default() -> Self {
-        Self {
-            contents: Vec::new(),
-            language_to_handle: HashMap::new(),
-            handle_to_index: HashMap::new(),
-            next_handle: 0,
-        }
-    }
+#[derive(Debug, Error, PartialEq)]
+pub enum TemplateError {
+    #[error("Name {0} is used by other template")]
+    DuplicatedContentName(String),
+
+    #[error("Language {0} is used by other template")]
+    DuplicatedContentLanguages(String),
 }
 
 
-/// Helper builder of easier content building
-pub struct ContentBuilder<LanguageKey> where LanguageKey: Hash + Eq + Clone {
-    template: Template<LanguageKey>,
+
+/// Represent content of template
+#[derive(Clone, Default, Debug)]
+pub struct Content {
+    pub content: String,
+    pub languages: Vec<String>,
+    pub name: Option<String>
 }
 
 
-impl<LanguageKey> ContentBuilder<LanguageKey> where LanguageKey: Hash + Eq + Clone {
-    /// Create new instance from template
-    pub fn new(template: Template<LanguageKey>) -> Self {
+impl Content {
+
+    pub fn new(content: String, languages: Vec<String>) -> Self {
         Self {
-            template,
+            content,
+            languages,
+            ..Self::default()
         }
     }
 
-    /// Add content and return self
-    pub fn add_content(mut self, content: String, languages: Vec<LanguageKey>) -> Self {
-        self.template.add_content(content, languages);
-        self
-    }
-
-    /// Consume self and return template
-    pub fn build(self) -> Template<LanguageKey> {
-        self.template
+    pub fn new_named(content: String, languages: Vec<String>, name: String) -> Self {
+        Self {
+            content,
+            languages,
+            name: Some(name)
+        }
     }
 }
 
@@ -163,128 +96,65 @@ mod tests {
     mod template {
         use std::collections::HashMap;
 
-        use crate::Template;
+        use crate::{Content, Template, TemplateError};
 
         #[test]
         fn add_content() {
-            let mut template = empty_template();
-            let handle = template.add_content("foo bar".to_string(), vec![1, 2, 3]);
+            let template = empty_template()
+                .add_content(Content::new("foo bar".to_string(), vec!["1".to_owned(), "2".to_owned(), "3".to_owned()])).unwrap();
             assert_eq!(template.contents.len(), 1);
-            assert_eq!(template.language_to_handle[&1], handle);
-            assert_eq!(template.language_to_handle[&2], handle);
-            assert_eq!(template.language_to_handle[&3], handle);
-            let idx = template.handle_to_index[&handle];
-            assert_eq!(template.contents[idx], "foo bar");
         }
 
         #[test]
         fn add_more_contents() {
-            let mut template = empty_template();
-            let handle_1 = template.add_content("foo bar".to_string(), vec![1, 2]);
-            let handle_2 = template.add_content("bar foo".to_string(), vec![2, 3]);
-
-
-            assert_eq!(template.language_to_handle[&1], handle_1);
-            assert_eq!(template.language_to_handle[&2], handle_2);
-            assert_eq!(template.language_to_handle[&3], handle_2);
-
-            let idx_1 = template.handle_to_index[&handle_1];
-            assert_eq!(template.contents[idx_1], "foo bar");
-            let idx_2 = template.handle_to_index[&handle_2];
-            assert_eq!(template.contents[idx_2], "bar foo");
+            let template = empty_template()
+                .add_content(Content::new("foo bar".to_string(), vec!["1".to_owned(), "2".to_owned()])).unwrap()
+                .add_content(Content::new("bar foo".to_string(), vec!["3".to_owned(), "4".to_owned()])).unwrap();
+            assert_eq!(template.contents.len(), 2);
         }
 
         #[test]
-        fn remove_content() {
-            let mut template = empty_template();
-            let handle_1 = template.add_content("foo bar".to_string(), vec![1, 2]);
-            let handle_2 = template.add_content("bar foo".to_string(), vec![2, 3]);
-            let result = template.remove_content(handle_1);
-            assert!(result.is_some());
-            assert_eq!(result.unwrap(), "foo bar");
+        fn add_duplicated_name() {
+            let result = empty_template()
+                .add_content(Content::new_named("foo".to_owned(), vec!["cs".to_owned()], "c1".to_owned())).unwrap()
+                .add_content(Content::new_named("foo".to_owned(), vec!["en".to_owned()], "c1".to_owned()));
 
-            assert_eq!(template.handle_to_index[&handle_2], 0);
-            assert_eq!(template.contents[0], "bar foo");
-            assert_eq!(template.handle_to_index.get(&handle_1), None);
-
-            assert_eq!(template.language_to_handle.get(&1), None);
-            assert_eq!(template.language_to_handle[&2], handle_2);
-            assert_eq!(template.language_to_handle[&3], handle_2);
+            assert!(result.is_err());
+            let err = result.err().unwrap();
+            assert_eq!(err, TemplateError::DuplicatedContentName("c1".to_owned()));
         }
 
         #[test]
-        fn remove_not_existing_content() {
-            let mut template = empty_template();
-            let handle_1 = template.add_content("foo bar".to_string(), vec![1, 2]);
-            let result = template.remove_content(handle_1 + 200);
-            assert!(result.is_none());
-        }
+        fn add_duplicated_language() {
+            let result = empty_template()
+                .add_content(Content::new("foo".to_owned(), vec!["cs".to_owned()])).unwrap()
+                .add_content(Content::new("foo".to_owned(), vec!["cs".to_owned()]));
 
-        #[test]
-        fn replace_content() {
-            let mut template = empty_template();
-            let handle_1 = template.add_content("foo bar".to_string(), vec![1, 2]);
-            let old_content = template.replace_content(handle_1, "bar bar".to_owned());
-
-            assert!(old_content.is_some());
-            assert_eq!(old_content.unwrap(), "foo bar");
-            assert_eq!(template.contents[0], "bar bar");
-        }
-
-        #[test]
-        fn replace_not_existing_content() {
-            let mut template = empty_template();
-            let handle_1 = template.add_content("foo bar".to_string(), vec![1, 2]);
-            let old_content = template.replace_content(handle_1 + 100, "bar bar".to_owned());
-            assert!(old_content.is_none());
-        }
-
-        #[test]
-        fn reassign_languages() {
-            let mut template = empty_template();
-            let handle_1 = template.add_content("foo bar".to_string(), vec![1, 2]);
-            let handle_2 = template.add_content("foo bar".to_string(), vec![3, 4]);
-            let old_languages = template.reassign_languages(handle_1, vec![2, 5]);
-
-            assert!(old_languages.is_some());
-            let Some(mut languages) = old_languages else { panic!() };
-            languages.sort();
-            assert_eq!(languages, vec![1, 2]);
-
-            assert_eq!(template.language_to_handle.get(&1), None);
-            assert_eq!(template.language_to_handle[&2], handle_1);
-            assert_eq!(template.language_to_handle[&5], handle_1);
-            assert_eq!(template.language_to_handle[&3], handle_2);
-            assert_eq!(template.language_to_handle[&4], handle_2);
-        }
-
-        #[test]
-        fn reassign_not_existing_languages() {
-            let mut template = empty_template();
-            let handle_1 = template.add_content("foo bar".to_string(), vec![1, 2]);
-            let _handle_2 = template.add_content("foo bar".to_string(), vec![3, 4]);
-            let old_languages = template.reassign_languages(handle_1 + 100, vec![2, 5]);
-
-            assert!(old_languages.is_none());
+            assert!(result.is_err());
+            let err = result.err().unwrap();
+            assert_eq!(err, TemplateError::DuplicatedContentLanguages("cs".to_owned()));
         }
 
         #[test]
         fn collect_contents() {
-            let mut template = empty_template();
-            template.add_content("foo bar".to_string(), vec![1, 2]);
-            template.add_content("bar bar".to_string(), vec![3]);
-            template.add_content("foo foo".to_string(), vec![]);
+            let template = empty_template()
+                .add_content(Content::new("foo bar".to_string(), vec!["1".to_owned(), "2".to_owned()])).unwrap()
+                .add_content(Content::new("bar bar".to_string(), vec!["3".to_owned()])).unwrap()
+                .add_content(Content::new("foo foo".to_string(), vec![])).unwrap();
 
             let contents = template.collect_contents();
             assert_eq!(contents.len(), 2);
-            let mut languages_by_content = contents.into_iter().collect::<HashMap<String, Vec<usize>>>();
-            languages_by_content.values_mut().for_each(|languages| languages.sort());
+            let mut languages_by_content = HashMap::<String, Vec<String>>::new();
 
-            assert_eq!(languages_by_content["foo bar"], vec![1, 2]);
-            assert_eq!(languages_by_content["bar bar"], vec![3]);
+            contents.iter().for_each(|c| {
+                c.languages.iter().for_each(|l| languages_by_content.entry(c.content.to_owned()).or_default().push(l.to_owned()));
+            });
+
+            assert_eq!(languages_by_content["foo bar"], vec!["1".to_owned(), "2".to_owned()]);
+            assert_eq!(languages_by_content["bar bar"], vec!["3".to_owned()]);
         }
 
-        fn empty_template() -> Template<usize> {
+        fn empty_template() -> Template {
             Template::default()
         }
     }

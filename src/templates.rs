@@ -21,7 +21,7 @@ impl Template {
 
     /// Create instance from iterable of `Content` instances or return `Err` if creation process failed (e.g. name
     /// or language conflict).
-    pub fn new(contents: impl Iterator<Item=Content>) -> Result<Self, TemplateError> {
+    pub fn new(contents: Vec<Content>) -> Result<Self, TemplateError> {
         let mut instance = Self::default();
         for c in contents {
             instance.add_content(c)?;

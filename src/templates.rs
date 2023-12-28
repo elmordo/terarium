@@ -51,7 +51,7 @@ impl Template {
 }
 
 
-#[derive(Debug, Error)]
+#[derive(Debug, Error, PartialEq)]
 pub enum TemplateError {
     #[error("Name {0} is used by other template")]
     DuplicatedContentName(String),
@@ -96,7 +96,7 @@ mod tests {
     mod template {
         use std::collections::HashMap;
 
-        use crate::{Content, Template};
+        use crate::{Content, Template, TemplateError};
 
         #[test]
         fn add_content() {
@@ -111,6 +111,28 @@ mod tests {
                 .add_content(Content::new("foo bar".to_string(), vec!["1".to_owned(), "2".to_owned()])).unwrap()
                 .add_content(Content::new("bar foo".to_string(), vec!["3".to_owned(), "4".to_owned()])).unwrap();
             assert_eq!(template.contents.len(), 2);
+        }
+
+        #[test]
+        fn add_duplicated_name() {
+            let result = empty_template()
+                .add_content(Content::new_named("foo".to_owned(), vec!["cs".to_owned()], "c1".to_owned())).unwrap()
+                .add_content(Content::new_named("foo".to_owned(), vec!["en".to_owned()], "c1".to_owned()));
+
+            assert!(result.is_err());
+            let err = result.err().unwrap();
+            assert_eq!(err, TemplateError::DuplicatedContentName("c1".to_owned()));
+        }
+
+        #[test]
+        fn add_duplicated_language() {
+            let result = empty_template()
+                .add_content(Content::new("foo".to_owned(), vec!["cs".to_owned()])).unwrap()
+                .add_content(Content::new("foo".to_owned(), vec!["cs".to_owned()]));
+
+            assert!(result.is_err());
+            let err = result.err().unwrap();
+            assert_eq!(err, TemplateError::DuplicatedContentLanguages("cs".to_owned()));
         }
 
         #[test]

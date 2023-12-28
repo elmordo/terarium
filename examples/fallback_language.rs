@@ -9,7 +9,7 @@ fn main() {
             "my_template".to_owned(),
             Template::default()
                 .add_content(Content::new("This is english template, because no czech template is available".to_owned(), vec!["en".to_owned()])).unwrap()
-        )
+        ).unwrap()
         .build().unwrap();
 
     // The EN template will be rendered

@@ -9,7 +9,7 @@ fn main() {
             Template::default()
                 .add_content(Content::new("This is my template #{{tpl_number}}".to_owned(), vec!["en".to_owned()])).unwrap()
                 .add_content(Content::new("Toto je šablona #{{tpl_number}}".to_owned(), vec!["cs".to_owned()])).unwrap()
-        )
+        ).unwrap()
         .build().unwrap();
 
     let mut ctx = Context::new();

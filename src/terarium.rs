@@ -108,47 +108,29 @@ pub struct TerariumBuilder  {
 
 impl TerariumBuilder  {
     /// Add new template to the new instance.
-    pub fn add_template(mut self, key: String, template: Template) -> Self {
+    /// If template exist, it will be replaced
+    pub fn add_template(mut self, key: String, template: Template) -> Result<Self, TerariumBuilderError> {
         self.templates.insert(key.clone(), template);
-        self
+        Ok(self)
     }
 
     /// Add new group into new instance
-    pub fn add_group(mut self, key: String, group: HashMap<String, String>) -> Self {
-        self.groups.insert(key.clone(), group);
-        self
-    }
+    /// If group with same name exists, it is replaced.
+    pub fn add_group(mut self, key: String, group: HashMap<String, String>) -> Result<Self, TerariumBuilderError> {
+        // Check templates exist
+        for (_, tpl_name) in group.iter() {
+            if !self.templates.contains_key(tpl_name) {
+                return Err(TerariumBuilderError::TemplateNotFound(tpl_name.to_owned()))
+            }
+        }
 
-    /// Check group configuration validity.
-    /// Return empty `Vec` if configuration is valid.
-    /// Return `Vec` of tuples where members are:
-    /// 1. group key
-    /// 2. member key
-    /// 3. template key
-    /// Of invalid group configuration (e.g. missing template)
-    pub fn check_group_config_validity(&self) -> Vec<(String, String, String)> {
-        self.groups
-            .iter()
-            .map(|(group_key, members)| {
-                // Check the group `group_key` and iterate over members
-                // missing templates are returned as iterable. This iterable is used as the
-                // `map` output
-                members
-                    .iter()
-                    .filter(|(_, template)| !self.templates.contains_key(*template))
-                    .map(|(member, template)| (group_key.clone(), member.clone(), template.clone()))
-            })
-            .flatten()  // Concat iterable of iterables into final output form
-            .collect()
+        // Add group to lookup
+        self.groups.insert(key, group);
+        Ok(self)
     }
 
     /// Build new `Terarium` instance based on stored templates and groups.
     pub fn build(self) -> Result<Terarium, TerariumBuilderError> {
-        let check_result = self.check_group_config_validity();
-        if !check_result.is_empty() {
-            return Err(TerariumBuilderError::GroupIntegrityProblem(check_result));
-        }
-
         let mut instance = Terarium::default();
         let mut tera_template_id: u32 = 1;
 
@@ -211,7 +193,7 @@ pub enum TerariumBuilderError {
     #[error("Unable to build template")]
     TemplateBuildingError(TeraError),
     #[error("Cannot build template groups - some templates are missing")]
-    GroupIntegrityProblem(Vec<(String, String, String)>),
+    TemplateNotFound(String),
 }
 
 
@@ -267,7 +249,7 @@ mod tests {
                 "1".to_owned(),
                 Template::default()
                     .add_content(Content::new("foo".to_string(), vec!["1".to_owned(), "2".to_owned()])).unwrap()
-            );
+            ).unwrap();
 
             assert_eq!(instance.templates.len(), 1);
             let template = instance.templates["1"].clone();
@@ -277,8 +259,9 @@ mod tests {
 
         #[test]
         fn group_manipulation() {
-            let mut instance = make_instance();
-            instance = instance.add_group("1".to_owned(), TemplateGroupBuilder::default().add_member("1".to_owned(), "1".to_owned()).build());
+            let mut instance = make_instance()
+                .add_template("1".to_owned(), Template::default()).unwrap()
+                .add_group("1".to_owned(), TemplateGroupBuilder::default().add_member("1".to_owned(), "1".to_owned()).build()).unwrap();
             let grp = instance.get_group(&"1".to_owned());
             assert!(grp.is_some());
             let grp = grp.unwrap();
@@ -291,9 +274,9 @@ mod tests {
         #[test]
         fn check_group_configuration() {
             let mut instance = make_instance();
-            instance = instance.add_template("1".to_owned(), Template::default());
-            instance = instance.add_template("2".to_owned(), Template::default());
-            instance =  instance.add_group(
+            instance = instance.add_template("1".to_owned(), Template::default()).unwrap();
+            instance = instance.add_template("2".to_owned(), Template::default()).unwrap();
+            let result =  instance.add_group(
                 "100".to_owned(),
                 TemplateGroupBuilder::default()
                     .add_member("10".to_owned(), "1".to_owned())
@@ -301,8 +284,7 @@ mod tests {
                     .add_member("30".to_owned(), "3".to_owned())
                     .build(),
             );
-
-            assert_eq!(instance.check_group_config_validity(), vec![("100".to_owned(), "30".to_owned(), "3".to_owned())]);
+            assert!(result.is_err())
         }
 
         fn make_instance() -> TerariumBuilder {
@@ -384,19 +366,19 @@ mod tests {
                     Template::default()
                         .add_content(Content::new("template_a cs {{name}}".to_owned(), vec!["cs".to_owned()])).unwrap()
                         .add_content(Content::new("template_a en {{name}}".to_owned(), vec!["en".to_owned()])).unwrap()
-                );
+                ).unwrap();
             builder = builder.add_template(
                 "template_b".to_owned(),
                 Template::default()
                     .add_content(Content::new("template_b en {{surname}}".to_owned(), vec!["en".to_owned()])).unwrap()
-            );
+            ).unwrap();
             builder = builder.add_group(
                 "group_a".to_owned(),
                 TemplateGroupBuilder::default()
                     .add_member("A".to_owned(), "template_a".to_owned())
                     .add_member("B".to_owned(), "template_b".to_owned())
                     .build(),
-            );
+            ).unwrap();
             builder.build().unwrap()
         }
 

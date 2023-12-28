@@ -9,19 +9,19 @@ fn main() {
             Template::default()
                 .add_content(Content::new("Greetings from {{sender}}".to_owned(), vec!["en".to_owned()])).unwrap()
                 .add_content(Content::new("Pozdrav od {{sender}}".to_owned(), vec!["cs".to_owned()])).unwrap()
-        )
+        ).unwrap()
         .add_template(
             "greet_text".to_owned(),
             Template::default()
                 .add_content(Content::new("Hello {{username}}".to_owned(), vec!["en".to_owned()])).unwrap()
                 .add_content(Content::new("Nazdar {{username}}".to_owned(), vec!["cs".to_owned()])).unwrap()
-        )
+        ).unwrap()
         .add_template(
             "greet_html".to_owned(),
             Template::default()
                 .add_content(Content::new("<p>Hello {{username}}</p>".to_owned(), vec!["en".to_owned()])).unwrap()
                 .add_content(Content::new("<p>Nazdar {{username}}</p>".to_owned(), vec!["cs".to_owned()])).unwrap()
-        )
+        ).unwrap()
         .add_group(
             "greet_email".to_string(),
             TemplateGroupBuilder::default()
@@ -29,7 +29,7 @@ fn main() {
                 .add_member("text".to_owned(), "greet_text".to_owned())
                 .add_member("html".to_owned(), "greet_html".to_owned())
                 .build()
-        )
+        ).unwrap()
         .build().unwrap();
 
     let mut ctx = Context::new();

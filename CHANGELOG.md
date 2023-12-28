@@ -7,7 +7,7 @@ Changelog
 * `Template.add_content()` now return `Result<Self, TemplateError>`.
 * Content can be named (and thus it can be referenced in other templates).
 * `ContentBuilder` struct removed.
-* Used language assignment must be assigned again in one template.
+* The language assignment to `Content` must be unique in one `Template`.
 * Template, language and other keys are not generic anymore. All keys are `String` now.
 * Attempt to define invalid template group now return `Result::Err` and `Terarium::check_group_config_validity` 
 is removed from interface.

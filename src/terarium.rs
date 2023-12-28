@@ -161,29 +161,21 @@ impl TerariumBuilder {
 
 
 /// Simplify building template groups.
-pub struct TemplateGroupBuilder<KeyType> where KeyType: Hash + Eq + Clone {
-    group: HashMap<KeyType, KeyType>,
+#[derive(Clone, Default)]
+pub struct TemplateGroupBuilder {
+    group: HashMap<String, String>,
 }
 
-impl<KeyType> TemplateGroupBuilder<KeyType> where KeyType: Hash + Eq + Clone {
+impl TemplateGroupBuilder {
     /// Add new member to group.
-    pub fn add_member(mut self, member_key: KeyType, template_key: KeyType) -> Self {
+    pub fn add_member(mut self, member_key: String, template_key: String) -> Self {
         self.group.insert(member_key, template_key);
         self
     }
 
     /// Build the group spec.
-    pub fn build(self) -> HashMap<KeyType, KeyType> {
+    pub fn build(self) -> HashMap<String, String> {
         self.group
-    }
-}
-
-
-impl<KeyType> Default for TemplateGroupBuilder<KeyType> where KeyType: Hash + Eq + Clone {
-    fn default() -> Self {
-        Self {
-            group: HashMap::new(),
-        }
     }
 }
 

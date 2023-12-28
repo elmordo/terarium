@@ -88,7 +88,7 @@ fn main() {
 
 ### Output
 
-```
+```text
 English
 =======
 

@@ -1,6 +1,12 @@
 Changelog
 =========
 
+## 0.3
+
+* `Template::add_content()`, `TerariumBuilder::add_template()` and `TerariumBuilder::add_group()` methods are not 
+chainable anymore. (Note: It was bad design - when method failed, instance was consumed and cannot be recovered).
+* `Template::new()` constructor to partially replace removed chainable api.
+
 ## 0.2
 
 * Simplification of the `Template` struct api (when content is added, it cannot be changed).
